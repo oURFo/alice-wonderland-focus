@@ -92,8 +92,8 @@ export function potion(ctx){
     recipe.replaceChildren(el('strong',ordered?'配方順序':'配方'));
     for(const [id,quantity] of order){
       const step=el('span');
-      if(ordered)step.textContent=ingredients[id].name+' '+quantity+' 格';
-      else step.append(art(ingredients[id].image),document.createTextNode(quantity+' 格'));
+      step.setAttribute('aria-label',ingredients[id].name+' '+quantity+' 格');
+      step.append(art(ingredients[id].image),document.createTextNode(quantity+' 格'));
       recipe.append(step);
     }
     if(ctx.level>1)ctx.after(ctx.level===3?3000:4000,()=>{

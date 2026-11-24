@@ -28,11 +28,23 @@ export function ambient(name, kind) {
   return image;
 }
 
+export function crossing(ctx,name,lane,interval,enabled=()=>true){
+  const enter=()=>{
+    if(enabled()){
+      const sprite=ambient(name,lane+' crossing');
+      sprite.addEventListener('animationend',()=>sprite.remove(),{once:true});
+      ctx.body.prepend(sprite);
+    }
+    ctx.after(interval*1000,enter);
+  };
+  ctx.after(2300,enter);
+}
+
 export async function prepareArtwork(id) {
   const assets={
-    cups:['cup','watch','sparkle','sunlight','clock-hand'],
-    puzzle:['plate','diamond','circle','triangle','square','pentagon','sparkle','steam'],
-    poker:['heart-card','spade-card','diamond-card','club-card','sparkle','pennant']
+    cups:['cup','watch','sparkle','sunlight','clock-hand','cat-crossing'],
+    puzzle:['plate','diamond','circle','triangle','square','pentagon','sparkle','steam','moth'],
+    poker:['heart-card','spade-card','diamond-card','club-card','sparkle','pennant','rabbit-run']
   };
   const scene=new Image();
   scene.src=new URL(id+'.webp',base);

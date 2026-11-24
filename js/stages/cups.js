@@ -1,11 +1,14 @@
 import {el, button, mark} from '../ui.js';
-import {paint,ambient} from '../art.js';
+import {paint,ambient,crossing} from '../art.js';
 export function cups(ctx) {
   const board = el('div',undefined,'arena');
   const status = el('p',undefined,'status');
   status.setAttribute('aria-live','polite');
   ctx.body.append(board,status);
-  if(ctx.ambient)ctx.body.prepend(ambient('sunlight','room-light'),ambient('clock-hand','room-clock'));
+  if(ctx.ambient){
+    ctx.body.prepend(ambient('sunlight','room-light'),ambient('clock-hand','room-clock'));
+    crossing(ctx,'cat-crossing','tea-crossing',5,()=>ctx.body.classList.contains('is-tracking'));
+  }
   let round = 0, current, ready = false, started = 0, generation = 0;
   function next() {
     if (++round > 3) return ctx.finish();

@@ -4,7 +4,7 @@ export function adjust(id, state, rows, fixed) {
   const goals = eligible.filter(row => row.target === true);
   const distractors = eligible.filter(row => row.target === false);
   const next = {...state};
-  const minimum = {puzzle:2,cups:3,poker:10}[id];
+  const minimum = {puzzle:state.level===1?6:9,cups:3,poker:10}[id];
   if (fixed || count < minimum || (id === 'poker' && (goals.length < 5 || distractors.length < 5))) {
     return {...next, reason:fixed ? '固定條件' : '樣本不足'};
   }

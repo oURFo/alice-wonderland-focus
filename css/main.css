@@ -83,7 +83,7 @@ header{min-height:60px}
 .puzzle-workspace p{font-weight:700;display:inline-block;background:#fff9e9dc;border-radius:10px;padding:2px 9px;margin-bottom:3px}
 .playing .puzzle-workspace .arena{padding:5px;gap:clamp(4px,1vw,12px)}
 .playing .plate{background-size:min(100%,330px) 150%}
-.scene-puzzle .game-board>button{position:absolute;z-index:2;bottom:6px;right:7px;font-size:.875rem;padding-inline:9px}
+.scene-puzzle .puzzle-round>button{position:absolute;z-index:2;bottom:6px;right:7px;font-size:.875rem;padding-inline:9px}
 .scene-puzzle .status{left:8px;transform:none;max-width:calc(100% - 144px);text-align:left}
 .workshop-steam{left:4%;top:19%;width:23%;height:48%;object-fit:contain;animation:workshop-steam 6s ease-in-out infinite}
 @keyframes workshop-steam{0%,100%{opacity:0;translate:0 8%}50%{opacity:.48;translate:8% -10%}}
@@ -97,6 +97,15 @@ header{min-height:60px}
 @keyframes queue-cue{from{scale:0 1}to{scale:1 1}}
 .parade-pennant{right:8%;top:24%;width:15%;height:38%;object-fit:contain;transform-origin:70% 15%;animation:pennant-sway 3.6s ease-in-out infinite}
 @keyframes pennant-sway{0%,100%{rotate:-5deg}50%{rotate:8deg}}
-@media(max-width:640px){.puzzle-workspace{inset-inline:2%;gap:2px}.playing .puzzle-workspace .arena{gap:3px}.playing .puzzle-workspace .tile{min-width:42px;padding:2px}.playing .puzzle-workspace .tile img{height:38px}.parade-count{top:45px}.scene-puzzle .game-board>button{white-space:nowrap}}
-@media(max-height:430px){.playing .game-board{min-height:clamp(198px,67dvh,288px)}.playing .game-board.concealed{min-height:0}.playing .status{font-size:.9rem}.scene-puzzle .game-board>button{min-height:36px}.room-light{top:8%}}
+@media(max-width:640px){.puzzle-workspace{inset-inline:2%;gap:2px}.playing .puzzle-workspace .arena{gap:3px}.playing .puzzle-workspace .tile{min-width:42px;padding:2px}.playing .puzzle-workspace .tile img{height:38px}.parade-count{top:45px}.scene-puzzle .puzzle-round>button{white-space:nowrap}}
+@media(max-height:430px){.playing .game-board{min-height:clamp(198px,67dvh,288px)}.playing .game-board.concealed{min-height:0}.playing .status{font-size:.9rem}.scene-puzzle .puzzle-round>button{min-height:36px}.room-light{top:8%}}
 @media(prefers-reduced-motion:reduce){.ambient{animation:none!important}}
+.preparation{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;padding:20px;text-align:center;background:#fff8e5db;color:#263e35;z-index:3}
+.preparation p{max-width:52ch}
+.preparation .countdown{display:grid;place-items:center;width:1.8em;aspect-ratio:1;margin:3px 0 6px;border:1px solid #92836b;border-radius:50%;background:#fff8e6;font:700 clamp(1.7rem,6dvh,3rem) Georgia,serif;font-variant-numeric:tabular-nums}
+.puzzle-count{position:absolute;top:8px;right:8px;z-index:2;border-radius:11px;padding:4px 9px;background:#fff9e9e8;font-weight:700}
+.crossing{left:0;top:var(--lane,27%);width:var(--sprite,13%);height:var(--sprite-height,19%);object-fit:contain;z-index:0;animation:traverse var(--cross-time,2.4s) linear both}
+.tea-crossing{--lane:34%;--sprite:16%;--sprite-height:20%;--cross-time:2.5s}
+.workshop-crossing{--lane:14%;--sprite:8%;--sprite-height:18%;--cross-time:3.4s}
+.parade-crossing{--lane:19%;--sprite:12%;--sprite-height:23%;--cross-time:2.7s}
+@keyframes traverse{0%{left:-17%;opacity:0;translate:0 5px}12%,85%{opacity:.84}40%{translate:0 -4px}65%{translate:0 3px}100%{left:105%;opacity:0;translate:0 -2px}}

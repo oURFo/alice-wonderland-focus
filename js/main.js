@@ -10,7 +10,7 @@ import {poker,paradeTiming} from './stages/poker.js';
 
 const stages={
   cups:{name:'迷蹤茶杯',intro:'看懷錶藏在哪裡。茶杯停下後，點選你追蹤的那一杯。',limit:90000,run:cups},
-  puzzle:{name:'碎裂茶盤',intro:'選一塊碎片，再找形狀相同的缺口。也可以直接拖過去。',limit:75000,run:puzzle},
+  puzzle:{name:'碎裂茶盤',intro:'選一塊碎片，再找形狀相同的缺口。也可以直接拖過去。依序完成三個茶盤。',limit:180000,run:puzzle},
   poker:{name:'士兵大閱兵',intro:'看清楚皇后的指令，只點符合花色的士兵。',limit:80000,run:poker}
 };
 const roomNames=['瘋帽客的午後茶室','紅心皇后的玫瑰花園','柴郡貓的微光蘑菇林','白兔先生的懷錶書房'];
@@ -20,6 +20,7 @@ const queues=[
 ].map(queue=>queue.split(' '));
 const compare=[3,6,10,13];
 const limit=30*60*1000;
+const preparationMs=10000;
 const app=document.querySelector('#app');
 const pauseButton=document.querySelector('#pause');
 const muteButton=document.querySelector('#mute');
@@ -112,6 +113,7 @@ function briefing(){
   scenery(root,id);
   root.prepend(stageProgress(session));
   const launch=button('開始這一關',async()=>{
+    enterFullscreen();
     launch.disabled=true;
     launch.textContent='準備道具中';
     try{
@@ -124,6 +126,10 @@ function briefing(){
     }
   },'primary');
   root.append(launch,button('回到大門',home));
+}
+function enterFullscreen(){
+  if(document.fullscreenElement||!document.documentElement.requestFullscreen)return;
+  document.documentElement.requestFullscreen().catch(()=>{});
 }
 function playSound(success){
   if(data.settings.muted)return;
@@ -138,9 +144,9 @@ function playSound(success){
   }catch{}
 }
 function parameters(id,level,fixed,ambient){
-  if(id==='cups')return {version:2,ambient,cups:3,exchanges:2+2*level,stepMs:510,hintMs:8000,revealMs:5000};
-  if(id==='puzzle')return {version:2,ambient,gaps:level===1?2:3,decoys:level===3?2:1,hintMs:10000,secondHintMs:5000,wrongLimit:2};
-  return {...paradeTiming,ambient,segments:fixed?2:level,perType:fixed?6:6/level};
+  if(id==='cups')return {version:3,ambient,cups:3,exchanges:2+2*level,stepMs:510,hintMs:8000,revealMs:5000};
+  if(id==='puzzle')return {version:3,ambient,sets:3,gaps:level===1?2:3,decoys:level===3?2:1,hintMs:10000,secondHintMs:5000,wrongLimit:2};
+  return {...paradeTiming,ambient,version:ambient?3:paradeTiming.version,segments:fixed?2:level,perType:fixed?6:6/level};
 }
 function start(id){
   const stage=stages[id],session=data.active;
@@ -154,8 +160,12 @@ function start(id){
   root.classList.add('playing');
   scenery(root,id);
   root.prepend(stageProgress(session));
+  const countdown=el('strong','10','countdown');
+  const preparation=el('div',undefined,'preparation');
+  preparation.append(el('h2','準備好了嗎？'),el('p',stage.intro),countdown,el('p','倒數結束後開始'));
+  body.append(preparation);
   root.append(body);pauseButton.hidden=false;
-  const run={record,root,body,elapsed:0,previous:null,initial:session.spent,stageSpent:session.stageSpent||0,
+  const run={record,root,body,elapsed:-preparationMs,previous:null,initial:session.spent,stageSpent:session.stageSpent||0,
     timers:[],paused:false,done:false,lastSave:0};
   game=run;
   const ctx={body,fixed,level,ambient,reduced:data.settings.reduced,now:()=>run.elapsed,
@@ -167,7 +177,6 @@ function start(id){
       playSound(success);
       if(success&&!data.settings.reduced&&!matchMedia('(prefers-reduced-motion: reduce)').matches)sparkle(root);
     }};
-  run.controller=stage.run(ctx);
   if(session.spent>=limit||run.stageSpent>=stage.limit){settle('time');return;}
   if(orientation.matches||document.hidden)pause();
   requestAnimationFrame(tick);
@@ -176,7 +185,17 @@ function start(id){
     if(!run.paused){
       if(run.previous!==null)run.elapsed+=Math.min(now-run.previous,1000);
       run.previous=now;
-      if(run.initial+run.elapsed>=limit||run.stageSpent+run.elapsed>=stage.limit){settle('time');return;}
+      if(run.elapsed<0){
+        countdown.textContent=String(Math.ceil(-run.elapsed/1000));
+        requestAnimationFrame(tick);
+        return;
+      }
+      if(!run.controller){
+        run.elapsed=0;
+        preparation.remove();
+        run.controller=stage.run(ctx);
+      }
+      if(run.initial+Math.max(0,run.elapsed)>=limit||run.stageSpent+Math.max(0,run.elapsed)>=stage.limit){settle('time');return;}
       const due=run.timers.filter(timer=>timer.at<=run.elapsed);
       run.timers=run.timers.filter(timer=>timer.at>run.elapsed);
       for(const timer of due){if(!run.done)timer.callback();}
@@ -190,8 +209,8 @@ function start(id){
 }
 function checkpoint(run){
   commit(next=>{
-    next.active.spent=Math.round(run.initial+run.elapsed);
-    next.active.stageSpent=Math.round(run.stageSpent+run.elapsed);
+    next.active.spent=Math.round(run.initial+Math.max(0,run.elapsed));
+    next.active.stageSpent=Math.round(run.stageSpent+Math.max(0,run.elapsed));
     next.active.pending=run.record;
   });
 }
@@ -203,7 +222,7 @@ function pause(){
   run.animations.forEach(animation=>animation.pause());
   run.body.classList.add('concealed');
   run.body.inert=true;
-  run.controller.pause?.();
+  run.controller?.pause?.();
   const menu=el('div',undefined,'actions');
   menu.append(button('繼續',()=>{if(orientation.matches||document.hidden)return;run.paused=false;run.previous=null;menu.remove();run.body.classList.remove('concealed');run.body.inert=false;run.animations.forEach(animation=>animation.play());},'primary'),
     button('離開屋子',()=>safe(()=>{
@@ -219,7 +238,7 @@ function settle(reason){
   if(!run||run.done)return;
   run.done=true;
   const {record}=run;
-  if(reason!=='skip')run.controller.settle?.();
+  if(reason!=='skip')run.controller?.settle?.();
   const status={skip:'跳過',help:'協助收尾',time:'時間收尾',finish:'完成'}[reason];
   const root=panel(stages[record.id].name,
     reason==='skip'?'這一關先休息，繼續下一段旅程。':'白兔替你記下這一關的足跡。');
@@ -237,8 +256,8 @@ function settle(reason){
         ?{...current,reason:reason==='skip'?'跳過':'固定條件'}
         :{...adjust(record.id,state,record.rows,false),ruleVersion:record.parameters.version};
       next.dda[record.id]=result;
-      session.results.push({...record,status,nextLevel:result.level,reason:result.reason,elapsed:Math.round(run.stageSpent+run.elapsed)});
-      session.spent=Math.round(run.initial+run.elapsed);session.pending=null;session.entryLevel=null;session.stageSpent=0;
+      session.results.push({...record,status,nextLevel:result.level,reason:result.reason,elapsed:Math.round(run.stageSpent+Math.max(0,run.elapsed))});
+      session.spent=Math.round(run.initial+Math.max(0,run.elapsed));session.pending=null;session.entryLevel=null;session.stageSpent=0;
     });
     game=null;
   }
@@ -285,7 +304,7 @@ function settings(){
   if(!data)root.append(el('p','目前無法讀取進度。你可以匯入一份備份。'));
   if(data){
     root.append(button(data.settings.reduced?'減敏模式：開啟':'減敏模式：關閉',()=>safe(()=>{commit(next=>next.settings.reduced=!next.settings.reduced);settings();})));
-    root.append(el('p','減敏模式會關閉窗光、鐘針、蒸氣、旗幟與星芒等效果。','muted'));
+    root.append(el('p','減敏模式會關閉窗光、鐘針、蒸氣、旗幟、跑動角色與星芒等效果。','muted'));
     root.append(button('下載進度備份',()=>download((demo?'模擬資料-':'')+'奇境進度.json',JSON.stringify({...data,dataset:demo?'simulation':'play'},null,2))));
     if(data.day===15||demo)root.append(button('重開旅程',()=>safe(()=>{
       if(!confirm('確定要開啟新一輪？可先下載進度備份。'))return;

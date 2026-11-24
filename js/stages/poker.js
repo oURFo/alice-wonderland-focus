@@ -1,5 +1,5 @@
 import {el,button,shuffle} from '../ui.js';
-import {art,paint,ambient} from '../art.js';
+import {art,paint,ambient,crossing} from '../art.js';
 
 export const paradeTiming = {version:2,stimulusMs:2500,gapMs:450,switchMs:1500};
 
@@ -12,7 +12,10 @@ export function poker(ctx) {
   const cue=el('span',undefined,'parade-cue');
   cue.setAttribute('aria-hidden','true');
   ctx.body.append(label,board,position,status,cue);
-  if(ctx.ambient)ctx.body.prepend(ambient('pennant','parade-pennant'));
+  if(ctx.ambient){
+    ctx.body.prepend(ambient('pennant','parade-pennant'));
+    crossing(ctx,'rabbit-run','parade-crossing',7);
+  }
   const groups=ctx.fixed?2:ctx.level;
   const goals=['heart-card','spade-card','diamond-card'];
   const names=['紅心','黑桃','方塊'];

@@ -219,7 +219,7 @@ function parameters(id,level,fixed,ambient){
   if(id==='cups')return {version:3,ambient,cups:3,exchanges:2+2*level,stepMs:510,hintMs:8000,revealMs:5000};
   if(id==='puzzle')return {version:3,ambient,sets:3,gaps:level===1?2:3,decoys:level===3?2:1,hintMs:10000,secondHintMs:5000,wrongLimit:2};
   if(id==='shooting')return {...orchardTiming,ambient};
-  if(id==='potion')return {version:3,ambient,recipes:2,visibleMs:[null,4000,3000][level-1],tolerance:level===1?.15:.10,ordered:level===3};
+  if(id==='potion')return {version:4,ambient,recipes:2,visibleMs:[null,4000,3000][level-1],tolerance:level===1?.15:.10,sequentialBottles:level===3};
   return {...paradeTiming,ambient,version:ambient?4:paradeTiming.version,segments:fixed?2:level,perType:fixed?6:6/level};
 }
 function start(id){
@@ -239,6 +239,7 @@ function start(id){
   preparation.append(el('h2','準備好了嗎？'),el('p',stage.intro),countdown,el('p','倒數結束後開始'));
   const input=id==='shooting'&&!desktopOrchard()?tiltControls(preparation):null;
   if(id==='shooting'&&desktopOrchard())preparation.append(el('p','用滑鼠點果園內的水果即可發射。'));
+  if(id==='potion'&&level===3)preparation.append(el('p','每次只會出現一瓶。確認這瓶的份量後，再倒下一瓶。'));
   if(practice)preparation.append(button('立即開始',()=>{if(!run.paused)run.elapsed=0;}));
   body.append(preparation);
   root.append(body);pauseButton.hidden=false;

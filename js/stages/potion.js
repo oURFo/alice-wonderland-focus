@@ -6,7 +6,7 @@ const ingredients=[
   {name:'藍莓汁',image:'berry-bottle',color:'#415f99'},
   {name:'月光露',image:'moon-bottle',color:'#bc7a24'}
 ];
-const recipes=[[[0,2],[1,1]],[[1,2],[0,1]],[[2,1],[0,2],[1,1]],[[1,1],[2,2],[0,1]]];
+const recipes=[[[0,2],[1,1]],[[1,2],[0,1]],[[2,1],[1,1],[0,2]],[[1,1],[2,2],[0,1]]];
 
 export function potion(ctx){
   const recipe=el('div',undefined,'potion-recipe');
@@ -24,21 +24,31 @@ export function potion(ctx){
   actions.append(peek,sponge,confirm,assist);
   ctx.body.append(recipe,progress,vessels,bottles,actions,status);
   if(ctx.ambient)crossing(ctx,'moth','potion-crossing',8);
+  const ordered=ctx.level===3;
   const tolerance=ctx.level===1?.15:.10;
-  let number=0, row, order, amounts, pours, meters, bottleButtons, started, displayToken, pouring, active=false;
+  let number=0, stepIndex=0, row, order, amounts, pours, meters, bottleButtons, started, displayToken, pouring, active=false;
   const format=value=>String(Math.round(value*100)/100);
   function next(){
     if(++number>2){ctx.finish();return;}
     active=true;started=ctx.now();displayToken={};
     const index=ctx.level===1?number-1:ctx.level===3?number+1:number===1?1:2;
     order=recipes[index];
-    amounts=ingredients.map(()=>0);pours=[];pouring=null;
+    amounts=ingredients.map(()=>0);pours=[];pouring=null;stepIndex=0;
     row=ctx.row({unit:number,group:number,acted:false,recipe:order.map(([id,quantity])=>({ingredient:ingredients[id].name,quantity})),
-      amounts:{},overpours:0,corrections:0,orderErrors:0,rejectedChecks:0,actions:[]});
-    progress.textContent='配方 '+number+'／2';
-    status.textContent='輕點瓶子加 ¼ 格，也可以按住連續倒入。';
+      amounts:{},overpours:0,corrections:0,rejectedChecks:0,actions:[]});
+    [confirm,sponge,assist].forEach(control=>control.disabled=false);
+    peek.disabled=ctx.level===1;
+    showRecipe();
+    showIngredients();
+  }
+  function showIngredients(){
+    const ids=ordered?[order[stepIndex][0]]:ctx.level===1?[0,1]:[0,1,2];
+    progress.textContent='配方 '+number+'／2'+(ordered?' · 第 '+(stepIndex+1)+' 瓶／'+order.length:'');
+    confirm.textContent=ordered&&stepIndex<order.length-1?'確認份量，下一瓶':'完成調配';
+    status.textContent=ordered?'倒入'+ingredients[ids[0]].name+'，夠了就確認份量。':'輕點瓶子加 ¼ 格，也可以按住連續倒入。';
     vessels.replaceChildren();bottles.replaceChildren();
-    meters=ingredients.slice(0,ctx.level===1?2:3).map((ingredient,id)=>{
+    meters=ids.map(id=>{
+      const ingredient=ingredients[id];
       const vessel=el('div',undefined,'potion-vessel');
       const fill=el('div',undefined,'potion-fill');
       const read=el('p',undefined,'potion-reading');
@@ -54,7 +64,7 @@ export function potion(ctx){
       vessels.append(vessel);
       return {id,fill,read};
     });
-    bottleButtons=meters.map(({id})=>{
+    bottleButtons=new Map(meters.map(({id})=>{
       const ingredient=ingredients[id];
       const control=button(undefined,event=>{
         if(event.detail===0&&!pouring){begin(id);add(.25);stop();}
@@ -73,18 +83,17 @@ export function potion(ctx){
       });
       for(const event of ['pointercancel','lostpointercapture'])control.addEventListener(event,()=>{if(pouring?.id===id)stop();});
       bottles.append(control);
-      return control;
-    });
-    [confirm,sponge,assist].forEach(control=>control.disabled=false);
-    peek.disabled=ctx.level===1;
-    showRecipe();
+      return [id,control];
+    }));
     render();
   }
   function showRecipe(){
     const token={};displayToken=token;
-    recipe.replaceChildren(el('strong',ctx.level===3?'依序加入':'配方'));
+    recipe.replaceChildren(el('strong',ordered?'配方順序':'配方'));
     for(const [id,quantity] of order){
-      const step=el('span');step.append(art(ingredients[id].image),document.createTextNode(quantity+' 格'));
+      const step=el('span');
+      if(ordered)step.textContent=ingredients[id].name+' '+quantity+' 格';
+      else step.append(art(ingredients[id].image),document.createTextNode(quantity+' 格'));
       recipe.append(step);
     }
     if(ctx.level>1)ctx.after(ctx.level===3?3000:4000,()=>{
@@ -107,7 +116,7 @@ export function potion(ctx){
     row.acted=true;
     const now=ctx.now();
     pouring={id,from:amounts[id],at:now,started:now,over:false};
-    bottleButtons[id].classList.add('pouring');
+    bottleButtons.get(id).classList.add('pouring');
   }
   function add(delta){
     if(!pouring)return;
@@ -134,7 +143,7 @@ export function potion(ctx){
       pours.push({id,from});
       row.actions.push({type:'倒入',ingredient:ingredients[id].name,quantity:Number((amounts[id]-from).toFixed(2))});
     }
-    bottleButtons[id].classList.remove('pouring');
+    bottleButtons.get(id).classList.remove('pouring');
     pouring=null;
   }
   function correct(){
@@ -151,19 +160,19 @@ export function potion(ctx){
     if(!active)return;
     stop();
     row.acted=true;
-    const poursInOrder=[...new Set(pours.map(pour=>pour.id))];
-    if(ctx.level===3&&!order.every(([id],index)=>poursInOrder[index]===id)){
-      row.orderErrors++;row.errors++;row.actions.push({type:'順序未合'});
-      status.textContent='看看配方順序，再試一次。';
-      ctx.feedback(false);return;
-    }
-    if(!amounts.every((amount,id)=>{
-      const goal=order.find(([ingredient])=>ingredient===id)?.[1]??0;
-      return Math.abs(amount-goal)<=goal*tolerance+.001;
-    })){
+    const goals=ordered?[order[stepIndex]]:ingredients.map((_,id)=>[id,order.find(step=>step[0]===id)?.[1]??0]);
+    if(!goals.every(([id,goal])=>Math.abs(amounts[id]-goal)<=goal*tolerance+.001)){
       row.rejectedChecks++;row.actions.push({type:'份量未合'});
       status.textContent='有些份量還差一點，可以接著調整。';
       ctx.feedback(false);return;
+    }
+    if(ordered&&stepIndex<order.length-1){
+      const [id]=order[stepIndex++];
+      row.actions.push({type:'確認份量',ingredient:ingredients[id].name,quantity:Number(amounts[id].toFixed(2))});
+      pours=[];
+      showIngredients();
+      ctx.feedback(true);
+      return;
     }
     finishRecipe(false);
   }
@@ -178,7 +187,7 @@ export function potion(ctx){
     if(!active)return;
     summarize(assisted);
     active=false;
-    [confirm,sponge,assist,peek,...bottleButtons].forEach(control=>control.disabled=true);
+    [confirm,sponge,assist,peek,...bottleButtons.values()].forEach(control=>control.disabled=true);
     if(!assisted)ctx.feedback(true);
     status.textContent=assisted?'皇后幫你調好了這杯。':'調配完成！';
     ctx.after(750,next);

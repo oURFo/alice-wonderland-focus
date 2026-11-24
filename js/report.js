@@ -57,7 +57,7 @@ export function report(root,data,stages){
     const versionOf=result=>result.parameters?.version??1;
     const comparable=data.history.flatMap(session=>session.results.filter(result=>result.fixed&&result.status==='完成'));
     const comparisonVersion=Math.max(1,...comparable.map(versionOf));
-    if(comparable.some(result=>versionOf(result)!==comparisonVersion))root.append(el('p','固定關卡的出場節奏已更新。兩週比較採用相同版本的作答，其他紀錄仍可在明細查看。'));
+    if(comparable.some(result=>versionOf(result)!==comparisonVersion))root.append(el('p','固定關卡的介面或出場規則已更新。兩週比較採用相同版本的作答，其他紀錄仍可在明細查看。'));
     const weeks=[1,8].map(start=>{
       const fixed=data.history.filter(session=>session.advanced&&session.day>=start&&session.day<start+7)
         .flatMap(session=>session.results.filter(result=>result.fixed&&result.status==='完成'&&versionOf(result)===comparisonVersion));

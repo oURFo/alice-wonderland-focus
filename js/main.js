@@ -131,6 +131,9 @@ function enterFullscreen(){
   if(document.fullscreenElement||!document.documentElement.requestFullscreen)return;
   document.documentElement.requestFullscreen().catch(()=>{});
 }
+function leaveFullscreen(){
+  if(document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen().catch(()=>{});
+}
 function playSound(success){
   if(data.settings.muted)return;
   const Audio=window.AudioContext||window.webkitAudioContext;
@@ -146,7 +149,7 @@ function playSound(success){
 function parameters(id,level,fixed,ambient){
   if(id==='cups')return {version:3,ambient,cups:3,exchanges:2+2*level,stepMs:510,hintMs:8000,revealMs:5000};
   if(id==='puzzle')return {version:3,ambient,sets:3,gaps:level===1?2:3,decoys:level===3?2:1,hintMs:10000,secondHintMs:5000,wrongLimit:2};
-  return {...paradeTiming,ambient,version:ambient?3:paradeTiming.version,segments:fixed?2:level,perType:fixed?6:6/level};
+  return {...paradeTiming,ambient,version:ambient?4:paradeTiming.version,segments:fixed?2:level,perType:fixed?6:6/level};
 }
 function start(id){
   const stage=stages[id],session=data.active;
@@ -260,6 +263,7 @@ function settle(reason){
       session.spent=Math.round(run.initial+Math.max(0,run.elapsed));session.pending=null;session.entryLevel=null;session.stageSpent=0;
     });
     game=null;
+    if(data.active.results.length===data.active.queue.length||data.active.spent>=limit)leaveFullscreen();
   }
   if(reason==='finish')root.append(el('p','獨立作答 '+record.rows.filter(row=>row.outcome==='independent').length+' 次'));
   const control=button('繼續旅程',()=>safe(briefing),'primary');
@@ -292,6 +296,7 @@ function finishDay(){
     next.history.push(session);next.closedDate=session.closed;next.active=null;
     if(session.advanced){next.advancedDate=session.closed;next.day++;}
   });
+  leaveFullscreen();
   const milestone=data.history.at(-1).advanced&&(data.day===8||data.day===15);
   const root=panel(data.day===15?'白兔的祕密茶會':'今日旅程結束',data.day===15?'和愛麗絲、白兔一起喝杯茶吧。':'歡迎下次回來繼續探索。');
   root.classList.add('cover');

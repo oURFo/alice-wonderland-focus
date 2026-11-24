@@ -87,8 +87,6 @@ header{min-height:60px}
 .scene-puzzle .status{left:8px;transform:none;max-width:calc(100% - 144px);text-align:left}
 .workshop-steam{left:4%;top:19%;width:23%;height:48%;object-fit:contain;animation:workshop-steam 6s ease-in-out infinite}
 @keyframes workshop-steam{0%,100%{opacity:0;translate:0 8%}50%{opacity:.48;translate:8% -10%}}
-.playing .rule{position:absolute;z-index:2;top:8px;left:50%;transform:translateX(-50%);margin:0;width:max-content;max-width:95%;padding:0 13px;border-radius:12px;background:#fff9e9e8}
-.playing .parade-ground{position:absolute;z-index:1;inset:20% 12% 22%;margin:0;min-height:0}
 .playing .soldier{align-self:end;background:transparent;border-color:transparent}
 .playing .soldier img{height:clamp(68px,33dvh,240px);filter:drop-shadow(2px 6px 3px #483c2c5c)}
 .parade-count{position:absolute;z-index:2;top:12px;right:10px;border-radius:12px;background:#fff9e9e8;padding:4px 8px;font-size:.82rem}
@@ -97,7 +95,7 @@ header{min-height:60px}
 @keyframes queue-cue{from{scale:0 1}to{scale:1 1}}
 .parade-pennant{right:8%;top:24%;width:15%;height:38%;object-fit:contain;transform-origin:70% 15%;animation:pennant-sway 3.6s ease-in-out infinite}
 @keyframes pennant-sway{0%,100%{rotate:-5deg}50%{rotate:8deg}}
-@media(max-width:640px){.puzzle-workspace{inset-inline:2%;gap:2px}.playing .puzzle-workspace .arena{gap:3px}.playing .puzzle-workspace .tile{min-width:42px;padding:2px}.playing .puzzle-workspace .tile img{height:38px}.parade-count{top:45px}.scene-puzzle .puzzle-round>button{white-space:nowrap}}
+@media(max-width:640px){.puzzle-workspace{inset-inline:2%;gap:2px}.playing .puzzle-workspace .arena{gap:3px}.playing .puzzle-workspace .tile{min-width:42px;padding:2px}.playing .puzzle-workspace .tile img{height:38px}.scene-puzzle .puzzle-round>button{white-space:nowrap}}
 @media(max-height:430px){.playing .game-board{min-height:clamp(198px,67dvh,288px)}.playing .game-board.concealed{min-height:0}.playing .status{font-size:.9rem}.scene-puzzle .puzzle-round>button{min-height:36px}.room-light{top:8%}}
 @media(prefers-reduced-motion:reduce){.ambient{animation:none!important}}
 .preparation{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;padding:20px;text-align:center;background:#fff8e5db;color:#263e35;z-index:3}
@@ -109,3 +107,12 @@ header{min-height:60px}
 .workshop-crossing{--lane:14%;--sprite:8%;--sprite-height:18%;--cross-time:3.4s}
 .parade-crossing{--lane:19%;--sprite:12%;--sprite-height:23%;--cross-time:2.7s}
 @keyframes traverse{0%{left:-17%;opacity:0;translate:0 5px}12%,85%{opacity:.84}40%{translate:0 -4px}65%{translate:0 3px}100%{left:105%;opacity:0;translate:0 -2px}}
+
+.parade-encounter{position:absolute;z-index:1;inset:18% 8% 20%;display:grid;grid-template-columns:max-content minmax(90px,clamp(105px,18vw,175px));align-items:end;justify-content:center;gap:clamp(8px,2vw,18px)}
+.playing .parade-ground{align-self:stretch;margin:0;min-height:0}
+.playing .rule{align-self:end;margin:0 0 clamp(10px,4dvh,30px);padding:6px clamp(8px,1.4vw,14px);gap:clamp(5px,1vw,10px);border:2px solid #7b4c34;border-radius:12px;background:#fff8e7;box-shadow:0 2px 8px #492b2633}
+.playing .rule.new-rule{border-color:#994534;background:#ffe8c7}
+.playing .rule img{width:clamp(36px,7vw,62px);height:clamp(44px,12dvh,78px);object-fit:contain}
+.rule span{display:grid;gap:2px;line-height:1.15}
+.rule small{font-size:clamp(.8rem,2vw,.95rem);font-weight:650}
+.rule strong{font-size:clamp(1.25rem,3.5vw,2rem);white-space:nowrap;font-weight:800}

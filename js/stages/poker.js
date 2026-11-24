@@ -1,7 +1,7 @@
 import {el,button,shuffle} from '../ui.js';
 import {art,paint,ambient,crossing} from '../art.js';
 
-export const paradeTiming = {version:2,stimulusMs:2500,gapMs:450,switchMs:1500};
+export const paradeTiming = {version:3,stimulusMs:2500,gapMs:450,switchMs:1500};
 
 export function poker(ctx) {
   const label=el('h2',undefined,'rule');
@@ -11,7 +11,9 @@ export function poker(ctx) {
   status.setAttribute('aria-live','polite');
   const cue=el('span',undefined,'parade-cue');
   cue.setAttribute('aria-hidden','true');
-  ctx.body.append(label,board,position,status,cue);
+  const encounter=el('div',undefined,'parade-encounter');
+  encounter.append(label,board);
+  ctx.body.append(encounter,position,status,cue);
   if(ctx.ambient){
     ctx.body.prepend(ambient('pennant','parade-pennant'));
     crossing(ctx,'rabbit-run','parade-crossing',7);
@@ -28,11 +30,15 @@ export function poker(ctx) {
     if(++phase===groups) return ctx.finish();
     index=0;
     sequence=shuffle([...Array(perType).fill(true),...Array(perType).fill(false)]);
-    label.replaceChildren(art(goals[phase]),document.createTextNode('只點'+names[phase]+'士兵'));
+    const instruction=el('span');
+    instruction.append(el('small',phase?'皇后的新指令':'皇后的指令'),el('strong','只點'+names[phase]));
+    label.replaceChildren(art(goals[phase]),instruction);
+    label.classList.toggle('new-rule',phase>0);
     status.textContent=phase?'皇后換指令了，請看新花色。':'看清楚指令，第一位士兵即將進場。';
     ctx.after(phase?paradeTiming.switchMs:1000,show);
   }
   function show() {
+    label.classList.remove('new-rule');
     const target=sequence[index++];
     const row=ctx.row({unit:phase*100+index,target,phase});
     const number=phase*perType*2+index;

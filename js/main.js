@@ -7,14 +7,14 @@ import {art,sparkle,prepareArtwork} from './art.js';
 import {cups} from './stages/cups.js';
 import {puzzle} from './stages/puzzle.js';
 import {poker,paradeTiming} from './stages/poker.js';
-import {shooting,tiltControls} from './stages/shooting.js';
+import {shooting,tiltControls,desktopOrchard,orchardTiming} from './stages/shooting.js';
 import {potion} from './stages/potion.js';
 
 const stages={
   cups:{name:'迷蹤茶杯',intro:'看懷錶藏在哪裡。茶杯停下後，點選你追蹤的那一杯。',limit:90000,preview:'cup',run:cups},
   puzzle:{name:'碎裂茶盤',intro:'選一塊碎片，再找形狀相同的缺口。也可以直接拖過去。依序完成三個茶盤。',limit:180000,preview:'plate',run:puzzle},
   poker:{name:'士兵大閱兵',intro:'看清楚皇后的指令，只點符合花色的士兵。',limit:80000,preview:'heart-card',run:poker},
-  shooting:{name:'搖擺果園',intro:'用搖桿或點按移動茶匙準心，瞄準金星紅蘋果再發射。條紋和蟲洞的果子留在原處。',limit:70000,preview:'apple-target',run:shooting},
+  shooting:{name:'搖擺果園',intro:'水果會陸續出現。只打有金星的紅蘋果，條紋或蟲洞的水果留在果園。',limit:70000,preview:'apple-target',run:shooting},
   potion:{name:'秘密藥水',intro:'照配方倒入指定份量。輕點瓶子加四分之一格，按住可連續倒入。',limit:110000,preview:'rose-bottle',run:potion}
 };
 const roomNames=['瘋帽客的午後茶室','紅心皇后的玫瑰花園','柴郡貓的微光蘑菇林','白兔先生的懷錶書房'];
@@ -218,8 +218,8 @@ function playSound(success){
 function parameters(id,level,fixed,ambient){
   if(id==='cups')return {version:3,ambient,cups:3,exchanges:2+2*level,stepMs:510,hintMs:8000,revealMs:5000};
   if(id==='puzzle')return {version:3,ambient,sets:3,gaps:level===1?2:3,decoys:level===3?2:1,hintMs:10000,secondHintMs:5000,wrongLimit:2};
-  if(id==='shooting')return {version:2,ambient,batches:3,windowMs:16000,holdMs:500};
-  if(id==='potion')return {version:2,ambient,recipes:2,visibleMs:[null,4000,3000][level-1],tolerance:level===1?.15:.10,ordered:level===3};
+  if(id==='shooting')return {...orchardTiming,ambient};
+  if(id==='potion')return {version:3,ambient,recipes:2,visibleMs:[null,4000,3000][level-1],tolerance:level===1?.15:.10,ordered:level===3};
   return {...paradeTiming,ambient,version:ambient?4:paradeTiming.version,segments:fixed?2:level,perType:fixed?6:6/level};
 }
 function start(id){
@@ -237,7 +237,8 @@ function start(id){
   const countdown=el('strong','10','countdown');
   const preparation=el('div',undefined,'preparation');
   preparation.append(el('h2','準備好了嗎？'),el('p',stage.intro),countdown,el('p','倒數結束後開始'));
-  const input=id==='shooting'?tiltControls(preparation):null;
+  const input=id==='shooting'&&!desktopOrchard()?tiltControls(preparation):null;
+  if(id==='shooting'&&desktopOrchard())preparation.append(el('p','用滑鼠點果園內的水果即可發射。'));
   if(practice)preparation.append(button('立即開始',()=>{if(!run.paused)run.elapsed=0;}));
   body.append(preparation);
   root.append(body);pauseButton.hidden=false;

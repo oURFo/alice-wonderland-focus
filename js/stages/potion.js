@@ -26,7 +26,7 @@ export function potion(ctx){
   if(ctx.ambient)crossing(ctx,'moth','potion-crossing',8);
   const tolerance=ctx.level===1?.15:.10;
   let number=0, row, order, amounts, pours, meters, bottleButtons, started, displayToken, pouring, active=false;
-  const format=value=>value.toFixed(1);
+  const format=value=>String(Math.round(value*100)/100);
   function next(){
     if(++number>2){ctx.finish();return;}
     active=true;started=ctx.now();displayToken={};
@@ -43,7 +43,14 @@ export function potion(ctx){
       const fill=el('div',undefined,'potion-fill');
       const read=el('p',undefined,'potion-reading');
       fill.style.backgroundColor=ingredient.color;
-      vessel.append(fill,art('beaker'),read);
+      const scale=el('div',undefined,'potion-scale');
+      scale.setAttribute('aria-hidden','true');
+      for(const mark of [0,1,2,3]){
+        const tick=el('span',String(mark));
+        tick.style.bottom='calc(var(--liquid-base) + '+mark+' * var(--liquid-unit))';
+        scale.append(tick);
+      }
+      vessel.append(fill,art('beaker'),scale,read);
       vessels.append(vessel);
       return {id,fill,read};
     });
@@ -91,8 +98,8 @@ export function potion(ctx){
   }
   function render(){
     for(const {id,fill,read} of meters){
-      fill.style.height=Math.min(amounts[id],3)*18+'%';
-      read.textContent=ingredients[id].name+' '+format(amounts[id])+' 格';
+      fill.style.height='calc('+amounts[id]+' * var(--liquid-unit))';
+      read.replaceChildren(el('span',ingredients[id].name),el('strong',format(amounts[id])+' 格'));
     }
   }
   function begin(id){

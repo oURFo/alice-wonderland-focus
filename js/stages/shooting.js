@@ -1,4 +1,4 @@
-import {el,button} from '../ui.js';
+import {el,button,shuffle} from '../ui.js';
 import {art,crossing} from '../art.js';
 
 export function tiltControls(preparation){
@@ -53,31 +53,50 @@ export function tiltControls(preparation){
     joystick:stop,dispose(){disposed=true;stop();}};
 }
 
+export const orchardTiming={version:3,total:15,spawnMs:1400,lifetimeMs:3800,holdMs:500};
+export const desktopOrchard=()=>matchMedia('(hover: hover) and (pointer: fine)').matches;
+
 export function shooting(ctx){
-  const field=el('div',undefined,'orchard-field');
-  const guide=el('p','只瞄準有金星的紅蘋果。','orchard-guide');
-  const status=el('p',undefined,'status');
+  const desktop=desktopOrchard();
+  const field=el('div',undefined,'orchard-field'+(desktop?' desktop-orchard':''));
+  const guide=el('p','只打有金星的紅蘋果。','orchard-guide');
+  const status=el('p',desktop?'點果園內瞄準並發射。':'瞄準後按發射。','status');
   status.setAttribute('aria-live','polite');
   const progress=el('p',undefined,'orchard-count');
   const cursor=el('div',undefined,'orchard-cursor');
   cursor.append(art('spoon'));
+  field.append(cursor);
+  if(desktop){field.tabIndex=0;field.setAttribute('aria-label','果園射擊區，可用方向鍵瞄準及空白鍵發射');}
   const stick=button(undefined,()=>{},'orchard-stick');
   stick.setAttribute('aria-label','移動準心的搖桿');
   stick.append(el('span'));
   const fireButton=button('發射',()=>fire(),'primary orchard-fire');
   const controls=el('div',undefined,'orchard-controls');
-  const mode=button('改用搖桿',()=>{ctx.input.joystick();mode.hidden=true;});
+  const mode=button('改用搖桿',()=>{ctx.input?.joystick();mode.hidden=true;});
   controls.append(stick,mode,fireButton);
+  controls.hidden=desktop;
   ctx.body.append(guide,field,progress,status,controls);
   if(ctx.ambient)crossing(ctx,'moth','orchard-crossing',7);
-  const auto=ctx.input.auto;
+
+  const auto=!desktop&&ctx.input?.auto;
+  const types=shuffle([
+    ...Array(ctx.level===1?10:9).fill('apple-target'),
+    ...Array(ctx.level===1?5:3).fill('apple-green'),
+    ...Array(ctx.level===1?0:3).fill('apple-rotten')
+  ]);
+  const positions=[22,50,78].flatMap(x=>[28,76].map(y=>({x,y})));
+  const live=new Set();
   const held=new Set();
-  const keyVector={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]};
-  let batch=0, row, fruit=[], aim, last=ctx.now(), started, locked, lockAt, ready=false, pointer=null;
-  let axis={x:0,y:0}, touchedAim=false, armed=false;
+  const keys={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]};
+  const clamp=value=>Math.max(-1,Math.min(1,value));
+  let count=0, aim={x:50,y:52}, last=ctx.now(), locked=null, lockAt=last, pointer=null;
+  let axis={x:0,y:0}, touchedAim=false, armed=false, finished=false, lastSpawn=false;
+  const inputMode=()=>desktop?'滑鼠':ctx.input?.active?'傾斜':touchedAim?'點按':'搖桿';
   function arm(){if(!armed){armed=true;lockAt=ctx.now();}}
-  const inputMode=()=>ctx.input.active?'傾斜':touchedAim?'點按':'搖桿';
-  const clamp=(value,limit=1)=>Math.max(-limit,Math.min(limit,value));
+  function aimAt(event){
+    const rect=field.getBoundingClientRect();
+    aim={x:100*(event.clientX-rect.left)/rect.width,y:100*(event.clientY-rect.top)/rect.height};
+  }
   function steer(event){
     const rect=stick.getBoundingClientRect();
     axis={x:clamp((event.clientX-rect.left-rect.width/2)/(rect.width/2)),y:clamp((event.clientY-rect.top-rect.height/2)/(rect.height/2))};
@@ -88,97 +107,101 @@ export function shooting(ctx){
   }
   stick.addEventListener('pointerdown',event=>{
     if(pointer!==null)return;
-    ctx.input.joystick();mode.hidden=true;touchedAim=false;arm();
+    ctx.input?.joystick();touchedAim=false;arm();
     pointer=event.pointerId;stick.setPointerCapture(pointer);steer(event);
   });
   stick.addEventListener('pointermove',event=>{if(event.pointerId===pointer)steer(event);});
   for(const type of ['pointerup','pointercancel','lostpointercapture'])stick.addEventListener(type,release);
   ctx.body.addEventListener('keydown',event=>{
-    if(!keyVector[event.key])return;
-    ctx.input.joystick();mode.hidden=true;touchedAim=false;arm();
-    event.preventDefault();held.add(event.key);
+    if(event.code==='Space'&&event.target!==fireButton&&!event.repeat){event.preventDefault();fire();return;}
+    if(!keys[event.key])return;
+    ctx.input?.joystick();touchedAim=false;arm();event.preventDefault();held.add(event.key);
   });
   ctx.body.addEventListener('keyup',event=>held.delete(event.key));
   ctx.body.addEventListener('focusout',()=>held.clear());
+  if(desktop)field.addEventListener('pointermove',aimAt);
   field.addEventListener('click',event=>{
-    if(!ready)return;
-    const rect=field.getBoundingClientRect();
-    ctx.input.joystick();mode.hidden=true;touchedAim=true;arm();
-    aim={x:100*(event.clientX-rect.left)/rect.width,y:100*(event.clientY-rect.top)/rect.height};
-    update();
+    if(finished)return;
+    ctx.input?.joystick();touchedAim=true;arm();aimAt(event);update();
+    if(desktop)fire();
   });
-  function next(){
-    if(++batch>3){ctx.finish();return;}
-    ready=true;started=ctx.now();aim={x:50,y:52};locked=null;armed=false;
-    row=ctx.row({unit:batch,group:batch,acted:false,mode:inputMode(),auto,targets:2,hits:0,missed:0,forbidden:0,shots:[]});
-    const side=batch===2?70:30;
-    const layout=[['apple-target',50,52,true],['apple-target',side,30,true]];
-    if(ctx.level>=2)layout.push(['apple-green',100-side,43,false]);
-    if(ctx.level>=3)layout.push(['apple-rotten',50,79,false]);
-    fruit=layout.map(([name,x,y,target])=>{
-      const image=art(name);
-      image.className='orchard-fruit';
-      image.alt=target?'金星紅蘋果':name==='apple-green'?'條紋青蘋果':'蟲洞蘋果';
-      return {image,x,y,target,live:true};
-    });
-    field.replaceChildren(...fruit.map(item=>item.image),cursor);
-    progress.textContent='第 '+batch+'／3 批';
-    status.textContent=auto?'移動或點按瞄準，再停留半秒。':'用搖桿或點按瞄準，再發射。';
-    fireButton.disabled=false;
+
+  function spawn(){
+    const name=types[count++];
+    const available=positions.filter(pos=>![...live].some(item=>item.position===pos));
+    const position=available[Math.floor(Math.random()*available.length)];
+    const target=name==='apple-target';
+    const image=art(name);
+    image.className='orchard-fruit';
+    image.alt=target?'金星紅蘋果':name==='apple-green'?'條紋青蘋果':'蟲洞蘋果';
+    const row=ctx.row({unit:count,target,mode:inputMode(),auto,kind:image.alt,shots:[]});
+    const item={image,position,row,since:ctx.now()};
+    live.add(item);
+    field.insertBefore(image,cursor);
+    progress.textContent='水果 '+count+'／'+orchardTiming.total;
+    ctx.after(orchardTiming.lifetimeMs,()=>retire(item));
+    lastSpawn=count===types.length;
+    if(!lastSpawn)ctx.after(orchardTiming.spawnMs,spawn);
     update();
-    const current=row;
-    ctx.after(16000,()=>{if(ready&&row===current)end();});
   }
-  function end(){
-    ready=false;
-    fireButton.disabled=true;
-    row.missed=row.targets-row.hits;
-    row.outcome=row.missed?'omission':row.errors?'corrected':'independent';
-    row.duration=Math.round(ctx.now()-started);
-    status.textContent=row.missed?'果籃收好了，準備下一批。':'這批果子都收好了！';
-    ctx.after(650,next);
+  function retire(item,shot=false){
+    if(!live.delete(item))return;
+    const {row}=item;
+    item.image.remove();
+    row.duration=Math.round(ctx.now()-item.since);
+    row.acted=shot;
+    row.outcome=shot?(row.target?'independent':'incorrect'):(row.target?'omission':'withheld');
+    row.errors=Number(shot&&!row.target);
+    if(shot)row.shots.push({at:row.duration,mode:inputMode(),result:row.target?'命中':'禁打'});
+    if(locked===item){locked=null;lockAt=ctx.now();}
+    if(lastSpawn&&!live.size){
+      finished=true;fireButton.disabled=true;
+      status.textContent='果園收工了。';
+      ctx.after(450,()=>ctx.finish());
+    }
   }
   function fire(){
-    if(!ready)return;
-    row.acted=true;
+    if(finished)return;
     const item=locked;
-    row.shots.push({at:Math.round(ctx.now()-started),mode:inputMode(),result:item?(item.target?'命中':'禁打'):'落空'});
-    if(item){
-      item.live=false;item.image.hidden=true;
-      if(item.target){row.hits++;ctx.feedback(true);}
-      else{row.forbidden++;row.errors++;ctx.feedback(false);}
-    }
-    locked=null;lockAt=ctx.now();
-    if(row.hits===row.targets)end();
-    else status.textContent=item?.target?'收下一顆。':item?'這顆先留在樹上。':'再瞄準看看。';
+    if(!item){status.textContent='這次沒瞄到水果。';return;}
+    const target=item.row.target;
+    retire(item,true);
+    ctx.feedback(target);
+    if(!finished)status.textContent=target?'收下一顆金星蘋果！':'這顆要留在果園。';
   }
   function update(){
     const now=ctx.now(), delta=Math.min(.05,(now-last)/1000);
     last=now;
-    mode.hidden=!ctx.input.active;
-    if(!ready)return;
-    const velocity=ctx.input.active?ctx.input.velocity:axis;
-    if(ctx.input.active&&Math.hypot(velocity.x,velocity.y)>.12)arm();
-    const keys=[...held].reduce((sum,key)=>[sum[0]+keyVector[key][0],sum[1]+keyVector[key][1]],[0,0]);
-    aim.x=Math.max(4,Math.min(96,aim.x+clamp(velocity.x+keys[0])*delta*59));
-    aim.y=Math.max(6,Math.min(94,aim.y+clamp(velocity.y+keys[1])*delta*71));
+    if(finished)return;
+    mode.hidden=!ctx.input?.active;
+    const velocity=ctx.input?.active?ctx.input.velocity:axis;
+    if(ctx.input?.active&&Math.hypot(velocity.x,velocity.y)>.12)arm();
+    const directions=[...held].reduce((sum,key)=>[sum[0]+keys[key][0],sum[1]+keys[key][1]],[0,0]);
+    aim.x=Math.max(0,Math.min(100,aim.x+clamp(velocity.x+directions[0])*delta*59));
+    aim.y=Math.max(0,Math.min(100,aim.y+clamp(velocity.y+directions[1])*delta*71));
     cursor.style.left=aim.x+'%';cursor.style.top=aim.y+'%';
     const width=field.clientWidth,height=field.clientHeight;
-    let candidate;
-    for(const [i,item] of fruit.entries()){
-      if(!item.live)continue;
+    let candidate, closest=Infinity;
+    for(const item of live){
+      const i=item.row.unit;
       const sway=ctx.level===3?Math.sin(now/520+i*2)*3+Math.sin(now/277+i)*.9:ctx.level===2?Math.sin(now/850+i)*1.7:0;
-      const x=item.x+sway;
-      item.image.style.left=x+'%';item.image.style.top=item.y+'%';
-      const radius=(ctx.level===3?.32:.39)*item.image.offsetWidth;
-      if(Math.hypot((x-aim.x)*width/100,(item.y-aim.y)*height/100)<=radius)candidate=item;
+      const x=item.position.x+sway, y=item.position.y;
+      item.image.style.left=x+'%';item.image.style.top=y+'%';
+      const dx=(x-aim.x)*width/100, dy=(y-aim.y)*height/100;
+      const distance=Math.hypot(dx,dy);
+      if(Math.abs(dx)<=item.image.offsetWidth*.49&&Math.abs(dy)<=item.image.offsetHeight*.49&&distance<closest){
+        candidate=item;closest=distance;
+      }
     }
-    if(candidate!==locked){locked=candidate;lockAt=now;}
+    if(candidate!==locked){locked=candidate??null;lockAt=now;}
     cursor.classList.toggle('locked',Boolean(locked));
-    if(auto&&armed&&locked&&now-lockAt>=500)fire();
+    if(auto&&armed&&locked&&now-lockAt>=orchardTiming.holdMs)fire();
   }
-  next();
-  return {update,pause(){release();if(ready){row.timingInterrupted=true;locked=null;armed=false;}},settle(){
-    if(ready){row.missed=row.targets-row.hits;row.outcome='assisted';row.duration=Math.round(ctx.now()-started);}
+  spawn();
+  return {update,pause(){
+    release();locked=null;armed=false;
+    for(const item of live)item.row.timingInterrupted=true;
+  },settle(){
+    for(const {row} of live){row.offered=false;row.outcome='assisted';}
   }};
 }

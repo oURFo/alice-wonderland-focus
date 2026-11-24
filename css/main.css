@@ -164,3 +164,15 @@ header{min-height:60px}
 .practice-choice{display:grid;justify-items:center;gap:4px;padding:8px 4px}
 .practice-choice img{width:50px;height:52px;object-fit:contain}
 @media(max-height:430px){.practice-choice img{width:40px;height:39px}.preparation:has(.orchard-option){padding:6px;row-gap:1px}.preparation:has(.orchard-option) p{margin-bottom:2px}.preparation:has(.orchard-option) button{min-height:32px}}
+
+.desktop-orchard{inset:0;cursor:crosshair}
+.desktop-orchard .orchard-fruit{max-width:12%}
+.desktop-orchard .orchard-cursor{opacity:.9}
+.potion-vessel{--liquid-base:28%;--liquid-unit:18%;min-width:0}
+.potion-vessel>img{width:80%;left:0}
+.potion-fill{bottom:var(--liquid-base);left:12%;width:56%}
+.potion-scale{position:absolute;inset:0;z-index:3;pointer-events:none}
+.potion-scale span{position:absolute;left:64%;transform:translateY(50%);display:flex;align-items:center;gap:3px;background:#fff8e5;color:#263e35;font-size:clamp(.7rem,2dvh,1.05rem);font-weight:800;line-height:1;padding:1px 3px;border-radius:3px}
+.potion-scale span::before{content:'';width:clamp(6px,1.5vw,13px);height:2px;background:#2f4a3d}
+.potion-reading{display:grid;justify-items:center;line-height:1.1;gap:1px}
+.potion-reading strong{font-size:clamp(.85rem,2.5dvh,1.18rem);font-variant-numeric:tabular-nums}

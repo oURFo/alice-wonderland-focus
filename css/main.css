@@ -60,3 +60,43 @@ header{min-height:60px}
 @media(prefers-reduced-motion:reduce){.sparkle{display:none}}
 
 .guide{display:block;width:auto;height:clamp(76px,22dvh,135px);margin-bottom:8px;object-fit:contain}
+/* Play takes place inside the illustrated room. */
+.scene.playing{padding:0;background:#f8efd9}
+.playing>h1{padding:0 16px;margin:0 0 6px;font-size:clamp(1.18rem,3vw,1.8rem)}
+.playing>.progress{padding:6px 16px 0;margin-bottom:0}
+.playing>.actions{padding:12px 16px}
+.playing .game-board{position:relative;isolation:isolate;width:100%;min-height:clamp(219px,68dvh,570px);overflow:hidden;background:var(--scene) center / 100% 100% no-repeat}
+.game-board.concealed{visibility:hidden;min-height:0!important;height:0}
+.playing .status{position:absolute;z-index:2;bottom:7px;left:50%;transform:translateX(-50%);margin:0;min-height:0;padding:4px 14px;max-width:92%;width:max-content;border-radius:12px;background:#fff9e9ed;box-shadow:0 2px 9px #3a2e2223;text-align:center}
+.ambient{position:absolute;pointer-events:none;z-index:0}
+.scene-cups .game-board .arena{position:absolute;z-index:1;left:10%;right:10%;top:50%;min-height:0;height:43%;margin:0}
+.scene-cups .game-board .cup{display:flex;justify-content:center;align-items:flex-end;top:0;height:100%;width:clamp(67px,17vw,164px);min-height:0;transition:none;padding:8px;border:0;background:transparent;border-radius:32%}
+.scene-cups .game-board .cup img{height:auto;width:100%;max-height:100%;filter:drop-shadow(2px 7px 3px #402f2755)}
+.scene-cups .game-board .cup:not(:disabled):hover{background:#fff4c450}
+.room-light{right:2%;top:10%;width:58%;height:78%;object-fit:fill;opacity:0;mix-blend-mode:screen;scale:-1 1}
+.is-tracking .room-light{animation:room-light 3.8s ease-in-out infinite}
+.room-clock{left:25.5%;top:12.6%;width:1.2%;height:7.5%;object-fit:fill;transform-origin:50% 83%;opacity:0}
+.is-tracking .room-clock{opacity:.88;animation:room-clock 4s linear infinite}
+@keyframes room-light{0%,100%{opacity:.08;translate:0 0}55%{opacity:.65;translate:-4% 1%}}
+@keyframes room-clock{to{rotate:360deg}}
+.puzzle-workspace{position:absolute;z-index:1;inset:41% 4% 15%;display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:8px;text-align:center}
+.puzzle-workspace p{font-weight:700;display:inline-block;background:#fff9e9dc;border-radius:10px;padding:2px 9px;margin-bottom:3px}
+.playing .puzzle-workspace .arena{padding:5px;gap:clamp(4px,1vw,12px)}
+.playing .plate{background-size:min(100%,330px) 150%}
+.scene-puzzle .game-board>button{position:absolute;z-index:2;bottom:6px;right:7px;font-size:.875rem;padding-inline:9px}
+.scene-puzzle .status{left:8px;transform:none;max-width:calc(100% - 144px);text-align:left}
+.workshop-steam{left:4%;top:19%;width:23%;height:48%;object-fit:contain;animation:workshop-steam 6s ease-in-out infinite}
+@keyframes workshop-steam{0%,100%{opacity:0;translate:0 8%}50%{opacity:.48;translate:8% -10%}}
+.playing .rule{position:absolute;z-index:2;top:8px;left:50%;transform:translateX(-50%);margin:0;width:max-content;max-width:95%;padding:0 13px;border-radius:12px;background:#fff9e9e8}
+.playing .parade-ground{position:absolute;z-index:1;inset:20% 12% 22%;margin:0;min-height:0}
+.playing .soldier{align-self:end;background:transparent;border-color:transparent}
+.playing .soldier img{height:clamp(68px,33dvh,240px);filter:drop-shadow(2px 6px 3px #483c2c5c)}
+.parade-count{position:absolute;z-index:2;top:12px;right:10px;border-radius:12px;background:#fff9e9e8;padding:4px 8px;font-size:.82rem}
+.parade-cue{position:absolute;bottom:40px;left:50%;width:40px;height:4px;background:#92672e;border-radius:3px;opacity:0;transform:translateX(-50%);transform-origin:left}
+.parade-cue.is-next{opacity:1;animation:queue-cue .45s linear both}
+@keyframes queue-cue{from{scale:0 1}to{scale:1 1}}
+.parade-pennant{right:8%;top:24%;width:15%;height:38%;object-fit:contain;transform-origin:70% 15%;animation:pennant-sway 3.6s ease-in-out infinite}
+@keyframes pennant-sway{0%,100%{rotate:-5deg}50%{rotate:8deg}}
+@media(max-width:640px){.puzzle-workspace{inset-inline:2%;gap:2px}.playing .puzzle-workspace .arena{gap:3px}.playing .puzzle-workspace .tile{min-width:42px;padding:2px}.playing .puzzle-workspace .tile img{height:38px}.parade-count{top:45px}.scene-puzzle .game-board>button{white-space:nowrap}}
+@media(max-height:430px){.playing .game-board{min-height:clamp(198px,67dvh,288px)}.playing .game-board.concealed{min-height:0}.playing .status{font-size:.9rem}.scene-puzzle .game-board>button{min-height:36px}.room-light{top:8%}}
+@media(prefers-reduced-motion:reduce){.ambient{animation:none!important}}

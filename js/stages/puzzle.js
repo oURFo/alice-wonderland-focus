@@ -1,5 +1,5 @@
 import {el,button,mark,shuffle} from '../ui.js';
-import {paint} from '../art.js';
+import {paint,ambient} from '../art.js';
 const names={diamond:'菱形',circle:'圓形',triangle:'三角形',square:'方形',pentagon:'五角形'};
 export function puzzle(ctx) {
   const count = ctx.level === 1 ? 2 : 3;
@@ -14,7 +14,14 @@ export function puzzle(ctx) {
   const pieces = new Map(shuffle([...shapes]).map(shape=>[shape,paint(button(undefined,()=>select(shape),'tile piece'),shape,'碎片 '+names[shape])]));
   board.append(...slots);
   tray.append(...pieces.values());
-  ctx.body.append(el('p','茶盤缺口'),board,el('p','碎片托盤'),tray,status,button('請瘋帽客幫忙',()=>ctx.finish('help')));
+  const workspace=el('div',undefined,'puzzle-workspace');
+  const plateArea=el('div');
+  const trayArea=el('div');
+  plateArea.append(el('p','茶盤缺口'),board);
+  trayArea.append(el('p','碎片托盤'),tray);
+  workspace.append(plateArea,trayArea);
+  ctx.body.append(workspace,status,button('請瘋帽客幫忙',()=>ctx.finish('help')));
+  if(ctx.ambient)ctx.body.prepend(ambient('steam','workshop-steam'));
 
   function select(shape) {
     selected = shape;

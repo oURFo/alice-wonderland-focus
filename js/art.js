@@ -21,11 +21,18 @@ export function sparkle(node) {
   node.append(image);
 }
 
+export function ambient(name, kind) {
+  const image=art(name);
+  image.className='ambient '+kind;
+  image.setAttribute('aria-hidden','true');
+  return image;
+}
+
 export async function prepareArtwork(id) {
   const assets={
-    cups:['cup','watch','sparkle'],
-    puzzle:['plate','diamond','circle','triangle','square','pentagon','sparkle'],
-    poker:['heart-card','spade-card','diamond-card','club-card','sparkle']
+    cups:['cup','watch','sparkle','sunlight','clock-hand'],
+    puzzle:['plate','diamond','circle','triangle','square','pentagon','sparkle','steam'],
+    poker:['heart-card','spade-card','diamond-card','club-card','sparkle','pennant']
   };
   const scene=new Image();
   scene.src=new URL(id+'.webp',base);

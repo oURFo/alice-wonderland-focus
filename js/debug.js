@@ -15,7 +15,7 @@ export function sample(days,queues) {
           errors:Number(outcome==='incorrect'),rt:outcome==='independent'&&id!=='puzzle'?540+unit*7-day*8:undefined,
           hints:outcome==='hinted'?[{reason:'等待過久',at:8000}]:[]};
       });
-      return {id,status:'完成',attempt:'sample-'+day+'-'+id,fixed,level:1,nextLevel:1,reason:'模擬資料',rows};
+      return {id,status:'完成',parameters:{version:2},attempt:'sample-'+day+'-'+id,fixed,level:1,nextLevel:1,reason:'模擬資料',rows};
     });
     return {day,started,closed:started,energy:['滿格','一半','快沒電'][index%3],time:'下午',queue:queues[index],results,attempts:[],spent:128000,advanced:true};
   });

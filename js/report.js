@@ -54,9 +54,13 @@ export function report(root,data,stages){
     button('列印',()=>print()));
   root.append(action);
   if(data.day>=8){
+    const versionOf=result=>result.parameters?.version??1;
+    const comparable=data.history.flatMap(session=>session.results.filter(result=>result.fixed&&result.status==='完成'));
+    const comparisonVersion=Math.max(1,...comparable.map(versionOf));
+    if(comparable.some(result=>versionOf(result)!==comparisonVersion))root.append(el('p','固定關卡的出場節奏已更新。兩週比較採用相同版本的作答，其他紀錄仍可在明細查看。'));
     const weeks=[1,8].map(start=>{
       const fixed=data.history.filter(session=>session.advanced&&session.day>=start&&session.day<start+7)
-        .flatMap(session=>session.results.filter(result=>result.fixed&&result.status==='完成'));
+        .flatMap(session=>session.results.filter(result=>result.fixed&&result.status==='完成'&&versionOf(result)===comparisonVersion));
       const rows=eligible(fixed.flatMap(result=>result.rows));
       const goals=rows.filter(row=>row.target),distractors=rows.filter(row=>row.target===false),rts=rtRows(rows);
       const enough=fixed.length>=2&&goals.length>=10&&distractors.length>=10;
@@ -85,4 +89,3 @@ export function report(root,data,stages){
   root.append(el('h2','逐關摘要'),grid(columns,summary));
   const more=el('details');more.append(el('summary','逐回合明細'),grid(details,units));root.append(more);
 }
-

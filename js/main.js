@@ -6,12 +6,12 @@ import {sample} from './debug.js';
 import {art,sparkle,prepareArtwork} from './art.js';
 import {cups} from './stages/cups.js';
 import {puzzle} from './stages/puzzle.js';
-import {poker} from './stages/poker.js';
+import {poker,paradeTiming} from './stages/poker.js';
 
 const stages={
   cups:{name:'迷蹤茶杯',intro:'看懷錶藏在哪裡。茶杯停下後，點選你追蹤的那一杯。',limit:90000,run:cups},
   puzzle:{name:'碎裂茶盤',intro:'選一塊碎片，再找形狀相同的缺口。也可以直接拖過去。',limit:75000,run:puzzle},
-  poker:{name:'士兵大閱兵',intro:'看清楚皇后的指令，只點符合花色的士兵。',limit:70000,run:poker}
+  poker:{name:'士兵大閱兵',intro:'看清楚皇后的指令，只點符合花色的士兵。',limit:80000,run:poker}
 };
 const roomNames=['瘋帽客的午後茶室','紅心皇后的玫瑰花園','柴郡貓的微光蘑菇林','白兔先生的懷錶書房'];
 const queues=[
@@ -137,26 +137,28 @@ function playSound(success){
     tone.connect(volume).connect(audioContext.destination);tone.start(now);tone.stop(now+.14);
   }catch{}
 }
-function parameters(id,level,fixed){
-  if(id==='cups')return {version:1,cups:3,exchanges:2+2*level,stepMs:510,hintMs:8000,revealMs:5000};
-  if(id==='puzzle')return {version:1,gaps:level===1?2:3,decoys:level===3?2:1,hintMs:10000,secondHintMs:5000,wrongLimit:2};
-  return {version:1,segments:fixed?2:level,perType:fixed?6:6/level,stimulusMs:2500,switchMs:1500};
+function parameters(id,level,fixed,ambient){
+  if(id==='cups')return {version:2,ambient,cups:3,exchanges:2+2*level,stepMs:510,hintMs:8000,revealMs:5000};
+  if(id==='puzzle')return {version:2,ambient,gaps:level===1?2:3,decoys:level===3?2:1,hintMs:10000,secondHintMs:5000,wrongLimit:2};
+  return {...paradeTiming,ambient,segments:fixed?2:level,perType:fixed?6:6/level};
 }
 function start(id){
   const stage=stages[id],session=data.active;
   const fixed=id==='poker'&&compare.includes(session.day);
   const level=session.entryLevel??data.dda[id].level;
-  const record={id,attempt:uid(),fixed,level,parameters:parameters(id,level,fixed),rows:[]};
+  const ambient=!fixed&&!data.settings.reduced&&!matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const record={id,attempt:uid(),fixed,level,parameters:parameters(id,level,fixed,ambient),rows:[]};
   commit(next=>{next.active.pending=record;next.active.entryLevel=level;});
   const root=panel(stage.name);
   const body=el('div',undefined,'game-board');
+  root.classList.add('playing');
   scenery(root,id);
   root.prepend(stageProgress(session));
   root.append(body);pauseButton.hidden=false;
   const run={record,root,body,elapsed:0,previous:null,initial:session.spent,stageSpent:session.stageSpent||0,
     timers:[],paused:false,done:false,lastSave:0};
   game=run;
-  const ctx={body,fixed,level,reduced:data.settings.reduced,now:()=>run.elapsed,
+  const ctx={body,fixed,level,ambient,reduced:data.settings.reduced,now:()=>run.elapsed,
     row(values){const row={errors:0,hints:[],...values};record.rows.push(row);return row;},
     hint(row,reason){row.hint=true;row.hints.push({reason,at:Math.round(run.elapsed)});},
     after(ms,callback){run.timers.push({at:run.elapsed+ms,callback});},
@@ -196,10 +198,14 @@ function checkpoint(run){
 function pause(){
   const run=game;
   if(!run||run.paused||run.done)return;
-  run.paused=true;run.previous=null;run.body.hidden=true;
+  run.paused=true;run.previous=null;
+  run.animations=run.body.getAnimations({subtree:true}).filter(animation=>animation.playState==='running');
+  run.animations.forEach(animation=>animation.pause());
+  run.body.classList.add('concealed');
+  run.body.inert=true;
   run.controller.pause?.();
   const menu=el('div',undefined,'actions');
-  menu.append(button('繼續',()=>{if(orientation.matches||document.hidden)return;run.paused=false;run.previous=null;menu.remove();run.body.hidden=false;},'primary'),
+  menu.append(button('繼續',()=>{if(orientation.matches||document.hidden)return;run.paused=false;run.previous=null;menu.remove();run.body.classList.remove('concealed');run.body.inert=false;run.animations.forEach(animation=>animation.play());},'primary'),
     button('離開屋子',()=>safe(()=>{
       checkpoint(run);
       commit(next=>{next.active.attempts.push({...run.record,status:'中斷'});next.active.pending=null;});
@@ -226,7 +232,10 @@ function settle(reason){
       const session=next.active;
       if(session.results.some(result=>result.attempt===record.attempt))return;
       const current=next.dda[record.id];
-      const result=reason==='skip'?{...current,reason:'跳過'}:adjust(record.id,current,record.rows,record.fixed);
+      const state=current.ruleVersion===record.parameters.version?current:{...current,streak:0};
+      const result=reason==='skip'||record.fixed
+        ?{...current,reason:reason==='skip'?'跳過':'固定條件'}
+        :{...adjust(record.id,state,record.rows,false),ruleVersion:record.parameters.version};
       next.dda[record.id]=result;
       session.results.push({...record,status,nextLevel:result.level,reason:result.reason,elapsed:Math.round(run.stageSpent+run.elapsed)});
       session.spent=Math.round(run.initial+run.elapsed);session.pending=null;session.entryLevel=null;session.stageSpent=0;
@@ -276,6 +285,7 @@ function settings(){
   if(!data)root.append(el('p','目前無法讀取進度。你可以匯入一份備份。'));
   if(data){
     root.append(button(data.settings.reduced?'減敏模式：開啟':'減敏模式：關閉',()=>safe(()=>{commit(next=>next.settings.reduced=!next.settings.reduced);settings();})));
+    root.append(el('p','減敏模式會關閉窗光、鐘針、蒸氣、旗幟與星芒等效果。','muted'));
     root.append(button('下載進度備份',()=>download((demo?'模擬資料-':'')+'奇境進度.json',JSON.stringify({...data,dataset:demo?'simulation':'play'},null,2))));
     if(data.day===15||demo)root.append(button('重開旅程',()=>safe(()=>{
       if(!confirm('確定要開啟新一輪？可先下載進度備份。'))return;

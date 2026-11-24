@@ -14,8 +14,8 @@ const stages={
   cups:{name:'迷蹤茶杯',intro:'看懷錶藏在哪裡。茶杯停下後，點選你追蹤的那一杯。',limit:90000,run:cups},
   puzzle:{name:'碎裂茶盤',intro:'選一塊碎片，再找形狀相同的缺口。也可以直接拖過去。依序完成三個茶盤。',limit:180000,run:puzzle},
   poker:{name:'士兵大閱兵',intro:'看清楚皇后的指令，只點符合花色的士兵。',limit:80000,run:poker},
-  shooting:{name:'搖擺果園',intro:'移動茶匙準心，瞄準有金星的紅蘋果再發射。條紋和蟲洞的果子留在原處。',limit:70000,run:shooting},
-  potion:{name:'秘密藥水',intro:'照配方長按瓶子，把藥水倒到指定格數。需要時可修正上一次用量。',limit:110000,run:potion}
+  shooting:{name:'搖擺果園',intro:'用搖桿或點按移動茶匙準心，瞄準金星紅蘋果再發射。條紋和蟲洞的果子留在原處。',limit:70000,run:shooting},
+  potion:{name:'秘密藥水',intro:'照配方倒入指定份量。輕點瓶子加四分之一格，按住可連續倒入。',limit:110000,run:potion}
 };
 const roomNames=['瘋帽客的午後茶室','紅心皇后的玫瑰花園','柴郡貓的微光蘑菇林','白兔先生的懷錶書房'];
 const queues=[
@@ -60,6 +60,7 @@ function showReport(){
 }
 function home(){
   if(game)return pause();
+  rotate();
   if(blocked){panel('請在原遊玩分頁繼續','重新開啟此頁即可再次取得遊玩權限。');return;}
   if(!data){settings();return;}
   if(!data.accepted){
@@ -129,7 +130,19 @@ function briefing(){
       launch.disabled=false;
     }
   },'primary');
-  root.append(launch,button('回到大門',home));
+  const motion=button('',()=>safe(()=>{
+    commit(next=>next.settings.reduced=!next.settings.reduced);
+    updateMotion();
+  }));
+  function updateMotion(){
+    const enabled=!data.settings.reduced&&!matchMedia('(prefers-reduced-motion: reduce)').matches;
+    motion.textContent=enabled?'背景動態：開啟':'背景動態：關閉';
+    motion.setAttribute('aria-pressed',String(enabled));
+    motion.disabled=matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if(motion.disabled)motion.title='系統已設定減少動態效果';
+  }
+  updateMotion();
+  root.append(launch,motion,button('回到大門',home));
 }
 function enterFullscreen(){
   if(document.fullscreenElement||!document.documentElement.requestFullscreen)return;
@@ -153,8 +166,8 @@ function playSound(success){
 function parameters(id,level,fixed,ambient){
   if(id==='cups')return {version:3,ambient,cups:3,exchanges:2+2*level,stepMs:510,hintMs:8000,revealMs:5000};
   if(id==='puzzle')return {version:3,ambient,sets:3,gaps:level===1?2:3,decoys:level===3?2:1,hintMs:10000,secondHintMs:5000,wrongLimit:2};
-  if(id==='shooting')return {version:1,ambient,batches:3,windowMs:16000,holdMs:500};
-  if(id==='potion')return {version:1,ambient,recipes:2,visibleMs:[null,4000,3000][level-1],tolerance:level===1?.15:.10,ordered:level===3};
+  if(id==='shooting')return {version:2,ambient,batches:3,windowMs:16000,holdMs:500};
+  if(id==='potion')return {version:2,ambient,recipes:2,visibleMs:[null,4000,3000][level-1],tolerance:level===1?.15:.10,ordered:level===3};
   return {...paradeTiming,ambient,version:ambient?4:paradeTiming.version,segments:fixed?2:level,perType:fixed?6:6/level};
 }
 function start(id){
@@ -188,7 +201,8 @@ function start(id){
       if(success&&!data.settings.reduced&&!matchMedia('(prefers-reduced-motion: reduce)').matches)sparkle(root);
     }};
   if(session.spent>=limit||run.stageSpent>=stage.limit){settle('time');return;}
-  if(orientation.matches||document.hidden)pause();
+  rotate();
+  if(document.hidden)pause();
   requestAnimationFrame(tick);
   function tick(now){
     if(game!==run||run.done)return;
@@ -250,6 +264,7 @@ function settle(reason){
   const run=game;
   if(!run||run.done)return;
   run.done=true;
+  rotate();
   const {record}=run;
   if(reason!=='skip')run.controller?.settle?.();
   run.input?.dispose();
@@ -359,7 +374,10 @@ document.querySelector('#home').onclick=home;
 document.querySelector('#settings').onclick=settings;
 pauseButton.onclick=pause;
 muteButton.onclick=()=>safe(()=>{if(data){commit(next=>next.settings.muted=!next.settings.muted);updateMute();}});
-function rotate(){portrait.hidden=!orientation.matches;if(!portrait.hidden)pause();}
+function rotate(){
+  portrait.hidden=!(orientation.matches&&game&&!game.done);
+  if(!portrait.hidden)pause();
+}
 orientation.addEventListener('change',rotate);
 document.addEventListener('visibilitychange',()=>{if(document.hidden){pause();if(game&&!game.done)safe(()=>checkpoint(game));}});
 window.addEventListener('pagehide',()=>{if(game&&!game.done){try{checkpoint(game);}catch{}}});

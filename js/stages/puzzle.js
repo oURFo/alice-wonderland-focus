@@ -36,7 +36,7 @@ function makeBoard(ctx,group,complete) {
   status.setAttribute('aria-live','polite');
   let closed=false, selected, previousMiss, misses=0, timer=0, dragging=false, pending, starting=ctx.now();
   const slots = units.map((unit,index)=>paint(button(undefined,()=>place(index),'tile slot'),unit.shape,'缺口 '+names[unit.shape]));
-  const pieces = new Map(shuffle([...shapes]).map(shape=>[shape,paint(button(undefined,()=>select(shape),'tile piece'),shape,'碎片 '+names[shape])]));
+  const pieces = new Map(shuffle([...shapes]).map(shape=>[shape,paint(button(undefined,event=>{if(event.currentTarget.dataset.dragged!=='yes')select(shape);},'tile piece'),shape,'碎片 '+names[shape])]));
   board.append(...slots);
   tray.append(...pieces.values());
   const workspace=el('div',undefined,'puzzle-workspace');
@@ -59,11 +59,21 @@ function makeBoard(ctx,group,complete) {
     for (const [key,piece] of pieces) piece.setAttribute('aria-pressed',String(key===shape));
   }
   for (const [shape,piece] of pieces) {
-    piece.addEventListener('pointerdown',()=>{dragging=true;});
+    piece.addEventListener('pointerdown',event=>{
+      if(event.button!==0)return;
+      delete piece.dataset.dragged;
+      dragging=true;
+      piece.setPointerCapture(event.pointerId);
+    });
     piece.addEventListener('pointercancel',release);
+    piece.addEventListener('lostpointercapture',release);
     piece.addEventListener('pointerup',event=>{
       const index = slots.indexOf(document.elementFromPoint(event.clientX,event.clientY)?.closest('button'));
-      if (index >= 0 && !slots[index].disabled) {select(shape); place(index);}
+      if (index >= 0 && !slots[index].disabled) {
+        select(shape);
+        place(index);
+        piece.dataset.dragged='yes';
+      }
       release();
     });
   }

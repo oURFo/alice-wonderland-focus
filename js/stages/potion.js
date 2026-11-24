@@ -36,7 +36,7 @@ export function potion(ctx){
     row=ctx.row({unit:number,group:number,acted:false,recipe:order.map(([id,quantity])=>({ingredient:ingredients[id].name,quantity})),
       amounts:{},overpours:0,corrections:0,orderErrors:0,rejectedChecks:0,actions:[]});
     progress.textContent='配方 '+number+'／2';
-    status.textContent='按住瓶子倒入量杯，夠了就放手。';
+    status.textContent='輕點瓶子加 ¼ 格，也可以按住連續倒入。';
     vessels.replaceChildren();bottles.replaceChildren();
     meters=ingredients.slice(0,ctx.level===1?2:3).map((ingredient,id)=>{
       const vessel=el('div',undefined,'potion-vessel');
@@ -54,11 +54,17 @@ export function potion(ctx){
       },'potion-bottle');
       control.append(art(ingredient.image),el('span',ingredient.name));
       control.addEventListener('pointerdown',event=>{
-        if(pouring||!active)return;
+        if(event.button!==0||pouring||!active)return;
         control.setPointerCapture(event.pointerId);
         begin(id);
       });
-      for(const event of ['pointerup','pointercancel','lostpointercapture'])control.addEventListener(event,()=>{if(pouring?.id===id)stop();});
+      control.addEventListener('pointerup',()=>{
+        if(pouring?.id!==id)return;
+        update();
+        if(ctx.now()-pouring.started<155)add(Math.max(0,.25-(amounts[id]-pouring.from)));
+        stop();
+      });
+      for(const event of ['pointercancel','lostpointercapture'])control.addEventListener(event,()=>{if(pouring?.id===id)stop();});
       bottles.append(control);
       return control;
     });
@@ -92,7 +98,8 @@ export function potion(ctx){
   function begin(id){
     if(!active)return;
     row.acted=true;
-    pouring={id,from:amounts[id],at:ctx.now(),over:false};
+    const now=ctx.now();
+    pouring={id,from:amounts[id],at:now,started:now,over:false};
     bottleButtons[id].classList.add('pouring');
   }
   function add(delta){

@@ -74,7 +74,9 @@ export function shooting(ctx){
   const held=new Set();
   const keyVector={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]};
   let batch=0, row, fruit=[], aim, last=ctx.now(), started, locked, lockAt, ready=false, pointer=null;
-  let axis={x:0,y:0};
+  let axis={x:0,y:0}, touchedAim=false, armed=false;
+  function arm(){if(!armed){armed=true;lockAt=ctx.now();}}
+  const inputMode=()=>ctx.input.active?'傾斜':touchedAim?'點按':'搖桿';
   const clamp=(value,limit=1)=>Math.max(-limit,Math.min(limit,value));
   function steer(event){
     const rect=stick.getBoundingClientRect();
@@ -86,22 +88,29 @@ export function shooting(ctx){
   }
   stick.addEventListener('pointerdown',event=>{
     if(pointer!==null)return;
-    ctx.input.joystick();mode.hidden=true;
+    ctx.input.joystick();mode.hidden=true;touchedAim=false;arm();
     pointer=event.pointerId;stick.setPointerCapture(pointer);steer(event);
   });
   stick.addEventListener('pointermove',event=>{if(event.pointerId===pointer)steer(event);});
   for(const type of ['pointerup','pointercancel','lostpointercapture'])stick.addEventListener(type,release);
   ctx.body.addEventListener('keydown',event=>{
     if(!keyVector[event.key])return;
-    ctx.input.joystick();mode.hidden=true;
+    ctx.input.joystick();mode.hidden=true;touchedAim=false;arm();
     event.preventDefault();held.add(event.key);
   });
   ctx.body.addEventListener('keyup',event=>held.delete(event.key));
   ctx.body.addEventListener('focusout',()=>held.clear());
+  field.addEventListener('click',event=>{
+    if(!ready)return;
+    const rect=field.getBoundingClientRect();
+    ctx.input.joystick();mode.hidden=true;touchedAim=true;arm();
+    aim={x:100*(event.clientX-rect.left)/rect.width,y:100*(event.clientY-rect.top)/rect.height};
+    update();
+  });
   function next(){
     if(++batch>3){ctx.finish();return;}
-    ready=true;started=ctx.now();aim={x:50,y:52};locked=null;
-    row=ctx.row({unit:batch,group:batch,acted:false,mode:ctx.input.active?'傾斜':'搖桿',auto,targets:2,hits:0,missed:0,forbidden:0,shots:[]});
+    ready=true;started=ctx.now();aim={x:50,y:52};locked=null;armed=false;
+    row=ctx.row({unit:batch,group:batch,acted:false,mode:inputMode(),auto,targets:2,hits:0,missed:0,forbidden:0,shots:[]});
     const side=batch===2?70:30;
     const layout=[['apple-target',50,52,true],['apple-target',side,30,true]];
     if(ctx.level>=2)layout.push(['apple-green',100-side,43,false]);
@@ -114,7 +123,7 @@ export function shooting(ctx){
     });
     field.replaceChildren(...fruit.map(item=>item.image),cursor);
     progress.textContent='第 '+batch+'／3 批';
-    status.textContent=auto?'瞄準並停留半秒。':'移動準心後按發射。';
+    status.textContent=auto?'移動或點按瞄準，再停留半秒。':'用搖桿或點按瞄準，再發射。';
     fireButton.disabled=false;
     update();
     const current=row;
@@ -133,7 +142,7 @@ export function shooting(ctx){
     if(!ready)return;
     row.acted=true;
     const item=locked;
-    row.shots.push({at:Math.round(ctx.now()-started),mode:ctx.input.active?'傾斜':'搖桿',result:item?(item.target?'命中':'禁打'):'落空'});
+    row.shots.push({at:Math.round(ctx.now()-started),mode:inputMode(),result:item?(item.target?'命中':'禁打'):'落空'});
     if(item){
       item.live=false;item.image.hidden=true;
       if(item.target){row.hits++;ctx.feedback(true);}
@@ -149,6 +158,7 @@ export function shooting(ctx){
     mode.hidden=!ctx.input.active;
     if(!ready)return;
     const velocity=ctx.input.active?ctx.input.velocity:axis;
+    if(ctx.input.active&&Math.hypot(velocity.x,velocity.y)>.12)arm();
     const keys=[...held].reduce((sum,key)=>[sum[0]+keyVector[key][0],sum[1]+keyVector[key][1]],[0,0]);
     aim.x=Math.max(4,Math.min(96,aim.x+clamp(velocity.x+keys[0])*delta*59));
     aim.y=Math.max(6,Math.min(94,aim.y+clamp(velocity.y+keys[1])*delta*71));
@@ -165,10 +175,10 @@ export function shooting(ctx){
     }
     if(candidate!==locked){locked=candidate;lockAt=now;}
     cursor.classList.toggle('locked',Boolean(locked));
-    if(auto&&locked&&now-lockAt>=500)fire();
+    if(auto&&armed&&locked&&now-lockAt>=500)fire();
   }
   next();
-  return {update,pause(){release();if(ready){row.timingInterrupted=true;locked=null;}},settle(){
+  return {update,pause(){release();if(ready){row.timingInterrupted=true;locked=null;armed=false;}},settle(){
     if(ready){row.missed=row.targets-row.hits;row.outcome='assisted';row.duration=Math.round(ctx.now()-started);}
   }};
 }

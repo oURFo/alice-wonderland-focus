@@ -96,7 +96,7 @@ header{min-height:60px}
 .parade-pennant{right:8%;top:24%;width:15%;height:38%;object-fit:contain;transform-origin:70% 15%;animation:pennant-sway 3.6s ease-in-out infinite}
 @keyframes pennant-sway{0%,100%{rotate:-5deg}50%{rotate:8deg}}
 @media(max-width:640px){.puzzle-workspace{inset-inline:2%;gap:2px}.playing .puzzle-workspace .arena{gap:3px}.playing .puzzle-workspace .tile{min-width:42px;padding:2px}.playing .puzzle-workspace .tile img{height:38px}.scene-puzzle .puzzle-round>button{white-space:nowrap}}
-@media(max-height:430px){.playing .game-board{min-height:clamp(198px,67dvh,288px)}.playing .game-board.concealed{min-height:0}.playing .status{font-size:.9rem}.scene-puzzle .puzzle-round>button{min-height:36px}.room-light{top:8%}}
+@media(max-height:430px){.playing .game-board{min-height:clamp(184px,calc(100dvh - 120px),288px)}.playing .game-board.concealed{min-height:0}.playing .status{font-size:.9rem}.scene-puzzle .puzzle-round>button{min-height:36px}.room-light{top:8%}}
 @media(prefers-reduced-motion:reduce){.ambient{animation:none!important}}
 .preparation{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;padding:20px;text-align:center;background:#fff8e5db;color:#263e35;z-index:3}
 .preparation p{max-width:52ch}

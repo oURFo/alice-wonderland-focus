@@ -1,13 +1,14 @@
 import {el,button,shuffle} from '../ui.js';
+import {art,paint} from '../art.js';
 export function poker(ctx) {
   const label=el('h2');
   const board=el('div',undefined,'arena');
   const status=el('p',undefined,'status');
   ctx.body.append(label,board,status);
   const groups=ctx.fixed?2:ctx.level;
-  const goals=['♥','♠','♦'];
+  const goals=['heart-card','spade-card','diamond-card'];
   const names=['紅心','黑桃','方塊'];
-  const others=['♣','♦','♥'];
+  const others=['club-card','diamond-card','heart-card'];
   let phase=-1, index=0, sequence, current, active=false, started=0;
   function segment() {
     if(++phase===groups) return ctx.finish();
@@ -15,7 +16,8 @@ export function poker(ctx) {
     const perType=ctx.fixed?6:groups===3?2:groups===2?3:6;
     const symbols=[...Array(perType).fill(true),...Array(perType).fill(false)];
     sequence=shuffle(symbols);
-    label.textContent='只點 '+goals[phase]+' '+names[phase]+' 士兵';
+    label.replaceChildren(art(goals[phase]),document.createTextNode('只點'+names[phase]+'士兵'));
+    label.className='rule';
     status.textContent=phase?'皇后換指令囉！':'看清楚皇后的指令。';
     ctx.after(phase?1500:1000,show);
   }
@@ -26,7 +28,7 @@ export function poker(ctx) {
     active=true;
     started=ctx.now();
     status.textContent='第 '+(phase+1)+' 段';
-    const card=button(target?goals[phase]:others[phase],()=>{
+    const card=button(undefined,()=>{
       if(!active)return;
       active=false;
       current.acted=true;
@@ -35,7 +37,8 @@ export function poker(ctx) {
       if(target)current.rt=Math.round(ctx.now()-started);
       card.disabled=true;
       ctx.feedback(target);
-    },'tile');
+    },'tile soldier');
+    paint(card,target?goals[phase]:others[phase],(target?names[phase]:['梅花','方塊','紅心'][phase])+'士兵');
     board.replaceChildren(card);
     ctx.after(2500,()=>{
       if(active) current.outcome=target?'omission':'withheld';

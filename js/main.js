@@ -3,6 +3,7 @@ import {demo,localDate,fresh,valid,read,save,download,changed} from './storage.j
 import {el,button} from './ui.js';
 import {report} from './report.js';
 import {sample} from './debug.js';
+import {art,sparkle,prepareArtwork} from './art.js';
 import {cups} from './stages/cups.js';
 import {puzzle} from './stages/puzzle.js';
 import {poker} from './stages/poker.js';
@@ -58,14 +59,17 @@ function home(){
   if(!data){settings();return;}
   if(!data.accepted){
     const root=panel('打開奇境大門','歡迎來到奇境茶會。你可以自己練習，也可以把遊玩紀錄分享給家人。');
+    root.classList.add('cover');
+    root.prepend(el('p','愛麗絲的奇境茶會','eyebrow'));
     root.append(button('開始探索',()=>safe(()=>{commit(next=>next.accepted=true);home();}),'primary'));
     return;
   }
   const ended=data.day===15;
   const rested=!demo&&data.closedDate===localDate()&&!data.active;
   const root=panel();
-  const hero=el('div',undefined,'hero'),copy=el('div'),seal=el('div','♧','seal');
-  seal.setAttribute('aria-hidden','true');hero.append(copy,seal);root.append(hero);
+  root.classList.add('cover');
+  const hero=el('div',undefined,'hero'),copy=el('div');
+  hero.append(copy);root.append(hero);
   copy.append(el('p',demo?'時光機 · 展示模式':'愛麗絲的奇境茶會','muted'),
     el('h1',ended?'奇境紀念館':rested?'白兔休息室':'每日專注力探索'),
     el('p',ended?'旅程結束了。一起回顧你的奇境足跡吧。':rested?'今天的探險已結束。白兔正在午睡，明天再一起出發吧。':'第 '+data.day+'／14 天 · '+room(data.day)));
@@ -78,6 +82,7 @@ function home(){
 function energy(){
   if(!demo&&data.closedDate===localDate())return home();
   const root=panel('今天的精神電量？','選一個最像你現在的感覺。');
+  root.classList.add('cover');
   const actions=el('div',undefined,'actions');
   ['滿格','一半','快沒電'].forEach(value=>actions.append(button(value,()=>safe(()=>{
     commit(next=>next.active={day:next.day,started:localDate(),energy:value,time:timeOfDay(),queue:queues[next.day-1],results:[],attempts:[],spent:0,pending:null});
@@ -93,13 +98,32 @@ function resumeSession(){
   });
   briefing();
 }
+function scenery(root,id){root.classList.add('scene','scene-'+id);}
+function stageProgress(session){
+  const row=el('p',undefined,'progress');
+  row.append(art('watch'),document.createTextNode('第 '+(session.results.length+1)+'／'+session.queue.length+' 關'));
+  return row;
+}
 function briefing(){
   const session=data.active;
   if(session.results.length===session.queue.length||session.spent>=limit)return finishDay();
   const id=session.queue[session.results.length], stage=stages[id];
   const root=panel(stage.name,stage.intro);
-  root.prepend(el('p','🐾 第 '+(session.results.length+1)+'／'+session.queue.length+' 關','progress'));
-  root.append(button('開始這一關',()=>safe(()=>start(id)),'primary'),button('回到大門',home));
+  scenery(root,id);
+  root.prepend(stageProgress(session));
+  const launch=button('開始這一關',async()=>{
+    launch.disabled=true;
+    launch.textContent='準備道具中';
+    try{
+      await prepareArtwork(id);
+      if(root.isConnected)safe(()=>start(id));
+    }catch{
+      if(root.isConnected)launch.textContent='重新載入道具';
+    }finally{
+      launch.disabled=false;
+    }
+  },'primary');
+  root.append(launch,button('回到大門',home));
 }
 function playSound(success){
   if(data.settings.muted)return;
@@ -125,8 +149,9 @@ function start(id){
   const record={id,attempt:uid(),fixed,level,parameters:parameters(id,level,fixed),rows:[]};
   commit(next=>{next.active.pending=record;next.active.entryLevel=level;});
   const root=panel(stage.name);
-  const body=el('div');
-  root.prepend(el('p','🐾 第 '+(session.results.length+1)+'／'+session.queue.length+' 關','progress'));
+  const body=el('div',undefined,'game-board');
+  scenery(root,id);
+  root.prepend(stageProgress(session));
   root.append(body);pauseButton.hidden=false;
   const run={record,root,body,elapsed:0,previous:null,initial:session.spent,stageSpent:session.stageSpent||0,
     timers:[],paused:false,done:false,lastSave:0};
@@ -136,7 +161,10 @@ function start(id){
     hint(row,reason){row.hint=true;row.hints.push({reason,at:Math.round(run.elapsed)});},
     after(ms,callback){run.timers.push({at:run.elapsed+ms,callback});},
     finish(reason){settle(reason||'finish');},
-    feedback:playSound};
+    feedback(success){
+      playSound(success);
+      if(success&&!data.settings.reduced&&!matchMedia('(prefers-reduced-motion: reduce)').matches)sparkle(root);
+    }};
   run.controller=stage.run(ctx);
   if(session.spent>=limit||run.stageSpent>=stage.limit){settle('time');return;}
   if(orientation.matches||document.hidden)pause();
@@ -189,6 +217,10 @@ function settle(reason){
   const status={skip:'跳過',help:'協助收尾',time:'時間收尾',finish:'完成'}[reason];
   const root=panel(stages[record.id].name,
     reason==='skip'?'這一關先休息，繼續下一段旅程。':'白兔替你記下這一關的足跡。');
+  scenery(root,record.id);
+  const guide=art('rabbit');
+  guide.className='guide';
+  root.append(guide);
   function persist(){
     commit(next=>{
       const session=next.active;
@@ -234,6 +266,7 @@ function finishDay(){
   });
   const milestone=data.history.at(-1).advanced&&(data.day===8||data.day===15);
   const root=panel(data.day===15?'白兔的祕密茶會':'今日旅程結束',data.day===15?'和愛麗絲、白兔一起喝杯茶吧。':'歡迎下次回來繼續探索。');
+  root.classList.add('cover');
   if(milestone)root.append(button('查看遊玩報告',showReport,'primary'));
   root.append(button('回到大門',home));
 }
@@ -293,6 +326,3 @@ if(navigator.locks){
     await new Promise(()=>{});
   }).catch(()=>panel('無法開啟遊玩分頁','請重新整理後再試。'));
 }else boot();
-
-
-

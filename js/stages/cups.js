@@ -1,4 +1,5 @@
 import {el, button, mark} from '../ui.js';
+import {paint} from '../art.js';
 export function cups(ctx) {
   const board = el('div',undefined,'arena');
   const status = el('p',undefined,'status');
@@ -13,7 +14,7 @@ export function cups(ctx) {
     ready = false;
     current = ctx.row({unit:round,offered:false});
     status.textContent = '第 ' + round + ' 題，記住懷錶的位置。';
-    const tiles = positions.map((_, index) => button(index === goal ? '◉' : '☕',()=>pick(index),'tile cup'));
+    const tiles = positions.map((_, index) => paint(button(undefined,()=>pick(index),'tile cup'),index===goal?'watch':'cup'));
     const place = () => tiles.forEach((tile,index)=> {
       tile.style.left = [22,50,78][positions[index]] + '%';
       tile.setAttribute('aria-label', '第 ' + (positions[index]+1) + ' 個茶杯');
@@ -34,7 +35,7 @@ export function cups(ctx) {
       current.outcome = outcome;
       if (outcome === 'assisted') current.timeout = true;
       tiles.forEach(tile=>tile.disabled=true);
-      tiles[goal].textContent = '◉';
+      paint(tiles[goal],'watch','懷錶在這裡');
       status.textContent = ['independent','hinted'].includes(outcome) ? '找到懷錶了！' : '柴郡貓掀開了茶杯。';
       ctx.feedback(['independent','hinted'].includes(outcome));
       ctx.after(650,next);
@@ -62,7 +63,7 @@ export function cups(ctx) {
       ctx.after(510,()=>exchange(left-1));
     }
     ctx.after(1100,()=>{
-      tiles[goal].textContent = '☕';
+      paint(tiles[goal],'cup');
       status.textContent = '跟著茶杯移動。';
       exchange(2+2*ctx.level);
     });
@@ -73,4 +74,3 @@ export function cups(ctx) {
     settle(){if(!current.outcome){current.outcome='assisted';current.timeout=true;}}
   };
 }
-

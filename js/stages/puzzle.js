@@ -1,19 +1,21 @@
 import {el,button,mark,shuffle} from '../ui.js';
+import {paint} from '../art.js';
+const names={diamond:'菱形',circle:'圓形',triangle:'三角形',square:'方形',pentagon:'五角形'};
 export function puzzle(ctx) {
   const count = ctx.level === 1 ? 2 : 3;
-  const shapes = ['◆','●','▲','■','⬟'].slice(0,count+(ctx.level===3?2:1));
+  const shapes = ['diamond','circle','triangle','square','pentagon'].slice(0,count+(ctx.level===3?2:1));
   const units = shapes.slice(0,count).map((shape,index)=>ctx.row({unit:index+1,shape}));
-  const board = el('div',undefined,'arena');
+  const board = el('div',undefined,'arena plate');
   const tray = el('div',undefined,'arena');
   const status = el('p','先選碎片，再點相同形狀的缺口。','status');
   status.setAttribute('aria-live','polite');
   let selected, previousMiss, misses=0, timer=0, dragging=false, pending, starting=ctx.now();
-  const slots = units.map((unit,index)=>button(unit.shape,()=>place(index),'tile'));
-  const pieces = new Map(shuffle([...shapes]).map(shape=>[shape,button(shape,()=>select(shape),'tile')]));
+  const slots = units.map((unit,index)=>paint(button(undefined,()=>place(index),'tile slot'),unit.shape,'缺口 '+names[unit.shape]));
+  const pieces = new Map(shuffle([...shapes]).map(shape=>[shape,paint(button(undefined,()=>select(shape),'tile piece'),shape,'碎片 '+names[shape])]));
   board.append(...slots);
   tray.append(...pieces.values());
   ctx.body.append(el('p','茶盤缺口'),board,el('p','碎片托盤'),tray,status,button('請瘋帽客幫忙',()=>ctx.finish('help')));
-  slots.forEach(slot=>slot.setAttribute('aria-label','缺口 '+slot.textContent));
+
   function select(shape) {
     selected = shape;
     for (const [key,piece] of pieces) piece.setAttribute('aria-pressed',String(key===shape));
@@ -76,7 +78,8 @@ export function puzzle(ctx) {
     unit.duration=Math.round(ctx.now()-starting);
     starting=ctx.now();
     slots[index].disabled=true;
-    slots[index].textContent=unit.shape+' ✓';
+    slots[index].classList.add('filled');
+    slots[index].setAttribute('aria-label',names[unit.shape]+'已拼合');
     pieces.get(selected).disabled=true;
     select(undefined);
     previousMiss=undefined;

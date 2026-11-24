@@ -15,3 +15,48 @@ h1,h2,p{margin:0 0 12px} h1{font-family:Georgia,"Microsoft JhengHei",serif;font-
 @media(max-height:420px){.card{padding:10px 16px}h1{font-size:1.45rem}h1,h2,p{margin-bottom:6px}}
 @media print{header,.actions,#portrait{display:none!important}.card{border:0;box-shadow:none}}
 .tile{touch-action:none}.cup{transition:left 420ms ease}.cup:disabled{opacity:1}.progress{color:#3a5a49} @media(prefers-reduced-motion:reduce){.shake{animation:none}.cup{transition:none}}
+/* Illustrated storybook surfaces */
+:root{--green:#254c42;--paper:#fff9ec;--ink:#283d34}
+body{color:var(--ink);background:#efe7d4 radial-gradient(ellipse at 88% 0,#dce4ce 0,transparent 58%)}
+header{min-height:60px}
+.wordmark{display:inline-flex;align-items:center;gap:8px;letter-spacing:.07em;padding-inline:6px}
+.wordmark img{width:30px;height:30px;object-fit:contain}
+.card{overflow:hidden;position:relative}
+.cover{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;min-height:clamp(280px,66dvh,560px);padding:clamp(24px,6vw,76px);background:#f7ecd5 linear-gradient(90deg,#fbf2df 0%,#fbf2dfed 29%,#fbf2df70 49%,transparent 69%);background-image:linear-gradient(90deg,#fbf2df 0%,#fbf2dfed 29%,#fbf2df70 49%,transparent 69%),url('../assets/cover.webp');background-size:cover;background-position:center}
+.cover>.hero{display:block;width:100%}
+.cover>.hero>div,.cover>p{max-width:min(36ch,58%)}
+.cover h1{max-width:15ch;letter-spacing:.045em}
+.eyebrow{font-size:.875rem;letter-spacing:.13em;color:#5a5d43;font-weight:700}
+.cover button:not(.primary){background:#fffaecde}
+.scene{--scene:url('../assets/cups.webp');background-image:linear-gradient(#fff9ecb0,#fff9ec70),var(--scene);background-size:100% 100%;background-position:center}
+.scene-puzzle{--scene:url('../assets/puzzle.webp')}
+.scene-poker{--scene:url('../assets/poker.webp')}
+.scene h1{color:#243f35}
+.progress{display:flex;gap:6px;align-items:center}
+.progress img{width:24px;height:24px;object-fit:contain}
+.game-board{width:min(100%,700px);margin:0 auto}
+.game-board>.status{text-align:center;font-weight:650;color:#294237}
+.scene .arena{min-height:74px;margin:4px 0}
+.scene-cups .arena{min-height:clamp(88px,28dvh,180px)}
+.scene .tile{position:relative;display:inline-grid;place-items:center;padding:4px;min-width:54px;min-height:51px;background:#fff9ed83;border:1px solid #88795970}
+.scene .tile img{pointer-events:none;display:block;width:auto;height:clamp(42px,12dvh,95px);max-width:100%;object-fit:contain}
+.scene .cup{position:absolute;width:clamp(72px,15vw,138px);margin-left:0;transform:translateX(-50%);top:4px}
+.scene .cup img{height:clamp(65px,24dvh,146px)}
+.scene .cup:disabled{background:#fff9ed30;border-color:transparent}
+.scene .piece[aria-pressed=true]{outline:3px solid #47725e;outline-offset:2px;background:#fbf1d8}
+.scene .plate{background:url('../assets/plate.png') center / min(92%,270px) 150% no-repeat;padding:4px 0;margin-top:-5px}
+.slot:not(.filled) img{filter:grayscale(1) brightness(.46);opacity:.58}
+.slot.filled{opacity:1;border-color:transparent;background:transparent}
+.scene-puzzle .game-board>p:not(.status){margin-bottom:0;font-size:.875rem;font-weight:700}
+.scene-puzzle .arena{margin:0}
+.rule{display:flex;justify-content:center;align-items:center;gap:8px;color:#472c26}
+.rule img{width:38px;height:42px;object-fit:contain}
+.scene .soldier img{height:clamp(68px,29dvh,160px)}
+.scene .soldier{min-width:82px;padding:5px 10px}
+.sparkle{position:absolute;z-index:1;top:43%;left:50%;width:clamp(90px,20vw,185px);transform:translate(-50%,-50%);pointer-events:none;animation:glow .57s ease-out both}
+@keyframes glow{0%{opacity:0;scale:.76}35%{opacity:.95}100%{opacity:0;scale:1.15}}
+@media(max-height:430px){header{min-height:46px;padding-block:2px}.scene .arena{min-height:54px}.scene-cups .arena{min-height:96px}.scene .tile img{height:42px}.scene .cup img,.scene .soldier img{height:76px}.progress{margin-bottom:2px}.cover{min-height:250px}}
+@media(max-width:560px){.cover{background-position:57% center}.cover>.hero>div,.cover>p{max-width:75%}}
+@media(prefers-reduced-motion:reduce){.sparkle{display:none}}
+
+.guide{display:block;width:auto;height:clamp(76px,22dvh,135px);margin-bottom:8px;object-fit:contain}

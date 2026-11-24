@@ -1,5 +1,5 @@
 import {adjust} from './dda.js';
-import {demo,localDate,fresh,valid,read,save,download,changed} from './storage.js';
+import {demo,localDate,fresh,valid,normalize,read,save,download,changed} from './storage.js';
 import {el,button} from './ui.js';
 import {report} from './report.js';
 import {sample} from './debug.js';
@@ -7,16 +7,20 @@ import {art,sparkle,prepareArtwork} from './art.js';
 import {cups} from './stages/cups.js';
 import {puzzle} from './stages/puzzle.js';
 import {poker,paradeTiming} from './stages/poker.js';
+import {shooting,tiltControls} from './stages/shooting.js';
+import {potion} from './stages/potion.js';
 
 const stages={
   cups:{name:'迷蹤茶杯',intro:'看懷錶藏在哪裡。茶杯停下後，點選你追蹤的那一杯。',limit:90000,run:cups},
   puzzle:{name:'碎裂茶盤',intro:'選一塊碎片，再找形狀相同的缺口。也可以直接拖過去。依序完成三個茶盤。',limit:180000,run:puzzle},
-  poker:{name:'士兵大閱兵',intro:'看清楚皇后的指令，只點符合花色的士兵。',limit:80000,run:poker}
+  poker:{name:'士兵大閱兵',intro:'看清楚皇后的指令，只點符合花色的士兵。',limit:80000,run:poker},
+  shooting:{name:'搖擺果園',intro:'移動茶匙準心，瞄準有金星的紅蘋果再發射。條紋和蟲洞的果子留在原處。',limit:70000,run:shooting},
+  potion:{name:'秘密藥水',intro:'照配方長按瓶子，把藥水倒到指定格數。需要時可修正上一次用量。',limit:110000,run:potion}
 };
 const roomNames=['瘋帽客的午後茶室','紅心皇后的玫瑰花園','柴郡貓的微光蘑菇林','白兔先生的懷錶書房'];
 const queues=[
-  'cups puzzle poker','cups puzzle poker','cups poker','cups puzzle','puzzle cups','puzzle poker','cups puzzle poker',
-  'cups puzzle','puzzle cups','cups poker','cups puzzle','puzzle cups','puzzle poker cups','cups puzzle poker'
+  'cups puzzle poker','cups puzzle poker','cups poker potion','cups potion shooting','puzzle shooting cups','puzzle poker potion','cups potion puzzle poker',
+  'cups puzzle shooting','puzzle shooting potion','cups poker potion','cups puzzle shooting','puzzle shooting potion','puzzle poker cups','cups puzzle shooting potion poker'
 ].map(queue=>queue.split(' '));
 const compare=[3,6,10,13];
 const limit=30*60*1000;
@@ -149,6 +153,8 @@ function playSound(success){
 function parameters(id,level,fixed,ambient){
   if(id==='cups')return {version:3,ambient,cups:3,exchanges:2+2*level,stepMs:510,hintMs:8000,revealMs:5000};
   if(id==='puzzle')return {version:3,ambient,sets:3,gaps:level===1?2:3,decoys:level===3?2:1,hintMs:10000,secondHintMs:5000,wrongLimit:2};
+  if(id==='shooting')return {version:1,ambient,batches:3,windowMs:16000,holdMs:500};
+  if(id==='potion')return {version:1,ambient,recipes:2,visibleMs:[null,4000,3000][level-1],tolerance:level===1?.15:.10,ordered:level===3};
   return {...paradeTiming,ambient,version:ambient?4:paradeTiming.version,segments:fixed?2:level,perType:fixed?6:6/level};
 }
 function start(id){
@@ -166,12 +172,13 @@ function start(id){
   const countdown=el('strong','10','countdown');
   const preparation=el('div',undefined,'preparation');
   preparation.append(el('h2','準備好了嗎？'),el('p',stage.intro),countdown,el('p','倒數結束後開始'));
+  const input=id==='shooting'?tiltControls(preparation):null;
   body.append(preparation);
   root.append(body);pauseButton.hidden=false;
   const run={record,root,body,elapsed:-preparationMs,previous:null,initial:session.spent,stageSpent:session.stageSpent||0,
-    timers:[],paused:false,done:false,lastSave:0};
+    timers:[],input,paused:false,done:false,lastSave:0};
   game=run;
-  const ctx={body,fixed,level,ambient,reduced:data.settings.reduced,now:()=>run.elapsed,
+  const ctx={body,fixed,level,ambient,input,reduced:data.settings.reduced,now:()=>run.elapsed,
     row(values){const row={errors:0,hints:[],...values};record.rows.push(row);return row;},
     hint(row,reason){row.hint=true;row.hints.push({reason,at:Math.round(run.elapsed)});},
     after(ms,callback){run.timers.push({at:run.elapsed+ms,callback});},
@@ -199,6 +206,8 @@ function start(id){
         run.controller=stage.run(ctx);
       }
       if(run.initial+Math.max(0,run.elapsed)>=limit||run.stageSpent+Math.max(0,run.elapsed)>=stage.limit){settle('time');return;}
+      run.controller.update?.();
+      if(run.done)return;
       const due=run.timers.filter(timer=>timer.at<=run.elapsed);
       run.timers=run.timers.filter(timer=>timer.at>run.elapsed);
       for(const timer of due){if(!run.done)timer.callback();}
@@ -231,6 +240,7 @@ function pause(){
     button('離開屋子',()=>safe(()=>{
       checkpoint(run);
       commit(next=>{next.active.attempts.push({...run.record,status:'中斷'});next.active.pending=null;});
+      run.input?.dispose();
       game=null;home();
     })),
     button('跳過這關',()=>{if(confirm('跳過後會進到下一關。確定要跳過嗎？'))settle('skip');}));
@@ -242,6 +252,7 @@ function settle(reason){
   run.done=true;
   const {record}=run;
   if(reason!=='skip')run.controller?.settle?.();
+  run.input?.dispose();
   const status={skip:'跳過',help:'協助收尾',time:'時間收尾',finish:'完成'}[reason];
   const root=panel(stages[record.id].name,
     reason==='skip'?'這一關先休息，繼續下一段旅程。':'白兔替你記下這一關的足跡。');
@@ -254,10 +265,15 @@ function settle(reason){
       const session=next.active;
       if(session.results.some(result=>result.attempt===record.attempt))return;
       const current=next.dda[record.id];
-      const state=current.ruleVersion===record.parameters.version?current:{...current,streak:0};
-      const result=reason==='skip'||record.fixed
-        ?{...current,reason:reason==='skip'?'跳過':'固定條件'}
-        :{...adjust(record.id,state,record.rows,false),ruleVersion:record.parameters.version};
+      const profiles=record.id==='shooting'?[...new Set(record.rows.flatMap(row=>
+        (row.shots.length?row.shots.map(shot=>shot.mode):[row.mode]).map(mode=>mode+'／'+(row.auto?'停留':'按鍵'))
+      ))]:[];
+      const profile=profiles[0]??null;
+      const state=current.ruleVersion===record.parameters.version&&(current.profile??null)===profile
+        ?current:{...current,streak:0};
+      const result=reason==='skip'||record.fixed||profiles.length>1
+        ?{...current,reason:reason==='skip'?'跳過':record.fixed?'固定條件':'本關使用多種操作方式'}
+        :{...adjust(record.id,state,record.rows,false),ruleVersion:record.parameters.version,profile};
       next.dda[record.id]=result;
       session.results.push({...record,status,nextLevel:result.level,reason:result.reason,elapsed:Math.round(run.stageSpent+Math.max(0,run.elapsed))});
       session.spent=Math.round(run.initial+Math.max(0,run.elapsed));session.pending=null;session.entryLevel=null;session.stageSpent=0;
@@ -332,7 +348,7 @@ function settings(){
       if(!valid(incoming)||(!demo&&incoming.dataset!=='play'))throw Error('這份備份與目前的遊玩模式不相容。');
       if(confirm('要用這份備份取代目前進度嗎？')){
         if(!writeAccess||blocked)throw Error('請在原遊玩分頁繼續。');
-        save(incoming);data=incoming;home();
+        data=normalize(incoming);save(data);home();
       }
     }catch(error){root.append(el('p',error.message));}
   });
@@ -347,7 +363,7 @@ function rotate(){portrait.hidden=!orientation.matches;if(!portrait.hidden)pause
 orientation.addEventListener('change',rotate);
 document.addEventListener('visibilitychange',()=>{if(document.hidden){pause();if(game&&!game.done)safe(()=>checkpoint(game));}});
 window.addEventListener('pagehide',()=>{if(game&&!game.done){try{checkpoint(game);}catch{}}});
-window.addEventListener('storage',event=>{if(changed(event)){blocked=true;game=null;home();}});
+window.addEventListener('storage',event=>{if(changed(event)){blocked=true;game?.input?.dispose();game=null;home();}});
 function boot(){
   writeAccess=true;
   try{data=read();}catch{data=null;}

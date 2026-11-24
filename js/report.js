@@ -2,7 +2,7 @@ import {el,button} from './ui.js';
 import {download,demo} from './storage.js';
 const outcomes={independent:'獨立作答',hinted:'提示後完成',assisted:'角色協助',incorrect:'答錯',corrected:'修正後完成',omission:'遺漏',withheld:'略過非目標'};
 const columns=['日','關卡','條件','結果','有效挑戰','獨立正確','提示次數','正確作答平均毫秒','作答時間標準差毫秒','有效速度樣本','入場難度','下次難度','難度判定'];
-const details=['日','關卡','嘗試','條件','回合','盤或段','目標','結果','提示前錯誤','提示','作答毫秒','耗時毫秒','排除原因','實際參數'];
+const details=['日','關卡','嘗試','條件','回合','盤或段','目標','結果','提示前錯誤','提示','作答毫秒','耗時毫秒','排除原因','實際參數','操作與份量明細'];
 const eligible=rows=>rows.filter(row=>row.offered!==false && !row.interrupted);
 const rtRows=rows=>eligible(rows).filter(row=>row.outcome==='independent'&&!row.timingInterrupted&&Number.isFinite(row.rt));
 const mean=rows=>rows.length?Math.round(rows.reduce((sum,row)=>sum+row.rt,0)/rows.length):null;
@@ -41,7 +41,7 @@ export function report(root,data,stages){
         units.push([session.day,display(result),result.attempt,result.fixed?'固定':'一般',row.unit,row.group??(row.phase===undefined?null:row.phase+1),
           row.target===undefined?null:row.target?'是':'否',outcomes[row.outcome]||'未完成',row.errors,
           row.hints?.map(hint=>hint.reason+' '+hint.at+'ms').join('／'),row.rt,row.duration,
-          result.status==='中斷'||result.status==='跳過'?result.status:row.interrupted?'試次中斷':row.timingInterrupted?'計時中斷':row.offered===false?'未開放作答':'',JSON.stringify(result.parameters||{})]);
+          result.status==='中斷'||result.status==='跳過'?result.status:row.interrupted?'試次中斷':row.timingInterrupted?'計時中斷':row.offered===false?'未開放作答':'',JSON.stringify(result.parameters||{}),row.shots||row.recipe?JSON.stringify(row):null]);
       }
     }
   }

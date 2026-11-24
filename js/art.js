@@ -44,7 +44,9 @@ export async function prepareArtwork(id) {
   const assets={
     cups:['cup','watch','sparkle','sunlight','clock-hand','cat-crossing'],
     puzzle:['plate','diamond','circle','triangle','square','pentagon','sparkle','steam','moth'],
-    poker:['heart-card','spade-card','diamond-card','club-card','sparkle','pennant','rabbit-run']
+    poker:['heart-card','spade-card','diamond-card','club-card','sparkle','pennant','rabbit-run'],
+    shooting:['apple-target','apple-green','apple-rotten','spoon','moth','sparkle'],
+    potion:['rose-bottle','berry-bottle','moon-bottle','beaker','sponge','moth','sparkle']
   };
   const scene=new Image();
   scene.src=new URL(id+'.webp',base);

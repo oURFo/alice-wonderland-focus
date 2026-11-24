@@ -6,13 +6,13 @@ export function sample(days,queues) {
     const started=[date.getFullYear(),date.getMonth()+1,date.getDate()].map(value=>String(value).padStart(2,'0')).join('-');
     const results=queues[index].map(id=>{
       const fixed=id==='poker'&&[3,6,10,13].includes(day);
-      const rows=Array.from({length:fixed?24:id==='cups'?3:id==='puzzle'?2:12},(_,unit)=>{
+      const rows=Array.from({length:fixed?24:id==='cups'?3:id==='puzzle'?6:id==='shooting'?3:id==='potion'?2:12},(_,unit)=>{
         const phase=fixed?Math.floor(unit/12):0;
         const target=id==='poker'?unit%2===0:undefined;
         const miss=(day+unit)%7===0;
         const outcome=target===false?(miss?'incorrect':'withheld'):miss?(target?'omission':'hinted'):'independent';
         return {unit:unit+1,phase,target,outcome,acted:['independent','incorrect','hinted'].includes(outcome),
-          errors:Number(outcome==='incorrect'),rt:outcome==='independent'&&id!=='puzzle'?540+unit*7-day*8:undefined,
+          errors:Number(outcome==='incorrect'),rt:outcome==='independent'&&['poker','cups'].includes(id)?540+unit*7-day*8:undefined,
           hints:outcome==='hinted'?[{reason:'等待過久',at:8000}]:[]};
       });
       return {id,status:'完成',parameters:{version:fixed?3:2},attempt:'sample-'+day+'-'+id,fixed,level:1,nextLevel:1,reason:'模擬資料',rows};

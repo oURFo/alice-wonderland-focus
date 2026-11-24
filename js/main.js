@@ -11,11 +11,11 @@ import {shooting,tiltControls} from './stages/shooting.js';
 import {potion} from './stages/potion.js';
 
 const stages={
-  cups:{name:'迷蹤茶杯',intro:'看懷錶藏在哪裡。茶杯停下後，點選你追蹤的那一杯。',limit:90000,run:cups},
-  puzzle:{name:'碎裂茶盤',intro:'選一塊碎片，再找形狀相同的缺口。也可以直接拖過去。依序完成三個茶盤。',limit:180000,run:puzzle},
-  poker:{name:'士兵大閱兵',intro:'看清楚皇后的指令，只點符合花色的士兵。',limit:80000,run:poker},
-  shooting:{name:'搖擺果園',intro:'用搖桿或點按移動茶匙準心，瞄準金星紅蘋果再發射。條紋和蟲洞的果子留在原處。',limit:70000,run:shooting},
-  potion:{name:'秘密藥水',intro:'照配方倒入指定份量。輕點瓶子加四分之一格，按住可連續倒入。',limit:110000,run:potion}
+  cups:{name:'迷蹤茶杯',intro:'看懷錶藏在哪裡。茶杯停下後，點選你追蹤的那一杯。',limit:90000,preview:'cup',run:cups},
+  puzzle:{name:'碎裂茶盤',intro:'選一塊碎片，再找形狀相同的缺口。也可以直接拖過去。依序完成三個茶盤。',limit:180000,preview:'plate',run:puzzle},
+  poker:{name:'士兵大閱兵',intro:'看清楚皇后的指令，只點符合花色的士兵。',limit:80000,preview:'heart-card',run:poker},
+  shooting:{name:'搖擺果園',intro:'用搖桿或點按移動茶匙準心，瞄準金星紅蘋果再發射。條紋和蟲洞的果子留在原處。',limit:70000,preview:'apple-target',run:shooting},
+  potion:{name:'秘密藥水',intro:'照配方倒入指定份量。輕點瓶子加四分之一格，按住可連續倒入。',limit:110000,preview:'rose-bottle',run:potion}
 };
 const roomNames=['瘋帽客的午後茶室','紅心皇后的玫瑰花園','柴郡貓的微光蘑菇林','白兔先生的懷錶書房'];
 const queues=[
@@ -30,13 +30,13 @@ const pauseButton=document.querySelector('#pause');
 const muteButton=document.querySelector('#mute');
 const portrait=document.querySelector('#portrait');
 const orientation=matchMedia('(orientation: portrait) and (pointer: coarse)');
-let data,game,writeAccess=false,blocked=false,audioContext;
+let data,game,practice,writeAccess=false,blocked=false,audioContext;
 
 function commit(change) {
   if(!writeAccess||blocked)throw Error('請在原遊玩分頁繼續。');
   const next=structuredClone(data);
   change(next);
-  save(next);
+  if(!practice)save(next);
   data=next;
 }
 function safe(action){
@@ -60,6 +60,7 @@ function showReport(){
 }
 function home(){
   if(game)return pause();
+  if(practice)endPractice();
   rotate();
   if(blocked){panel('請在原遊玩分頁繼續','重新開啟此頁即可再次取得遊玩權限。');return;}
   if(!data){settings();return;}
@@ -67,7 +68,7 @@ function home(){
     const root=panel('打開奇境大門','歡迎來到奇境茶會。你可以自己練習，也可以把遊玩紀錄分享給家人。');
     root.classList.add('cover');
     root.prepend(el('p','愛麗絲的奇境茶會','eyebrow'));
-    root.append(button('開始探索',()=>safe(()=>{commit(next=>next.accepted=true);home();}),'primary'));
+    root.append(button('開始探索',()=>safe(()=>{commit(next=>next.accepted=true);home();}),'primary'),button('試玩關卡',practiceMenu));
     return;
   }
   const ended=data.day===15;
@@ -81,9 +82,47 @@ function home(){
     el('p',ended?'旅程結束了。一起回顧你的奇境足跡吧。':rested?'今天的探險已結束。白兔正在午睡，明天再一起出發吧。':'第 '+data.day+'／14 天 · '+room(data.day)));
   const actions=el('div',undefined,'actions');
   if(!ended&&!rested)actions.append(button(data.active?'繼續旅程':'進入今日屋子',()=>safe(data.active?resumeSession:energy),'primary'));
-  actions.append(button('查看紀錄',showReport),button('設定',settings));
+  actions.append(button('試玩關卡',practiceMenu),button('查看紀錄',showReport),button('設定',settings));
   copy.append(actions);
   if(/Line\/|FBAN|FBAV|Instagram/i.test(navigator.userAgent))copy.append(el('p','建議以 Safari 或 Chrome 開啟，並在設定匯出進度備份。'));
+}
+function practiceMenu(){
+  if(practice)endPractice();
+  const root=panel('試玩關卡','選擇關卡直接開始。試玩不會計入每日旅程、難度或報告。');
+  const level=el('select');
+  for(const value of [1,2,3]){
+    const option=el('option','Lv. '+value);
+    option.value=String(value);
+    level.append(option);
+  }
+  const label=el('label',undefined,'practice-level');
+  label.append(document.createTextNode('難度'),level);
+  const choices=el('div',undefined,'practice-stages');
+  for(const [id,stage] of Object.entries(stages)){
+    const launch=button(undefined,async()=>{
+      for(const choice of choices.children)choice.disabled=true;
+      try{
+        await loadStage(id,root,()=>{
+          practice={original:data,level:Number(level.value)};
+          data={...fresh(),settings:{...data.settings},active:{
+            day:1,started:localDate(),time:timeOfDay(),queue:[id],results:[],attempts:[],spent:0,pending:null
+          }};
+          data.dda[id].level=practice.level;
+        });
+      }finally{
+        for(const choice of choices.children)choice.disabled=false;
+      }
+    },'practice-choice');
+    launch.append(art(stage.preview),el('span',stage.name));
+    choices.append(launch);
+  }
+  root.append(label,choices,button('回到大門',home));
+}
+function endPractice(){
+  data=practice.original;
+  practice=null;
+  updateMute();
+  leaveFullscreen();
 }
 function energy(){
   if(!demo&&data.closedDate===localDate())return home();
@@ -107,7 +146,7 @@ function resumeSession(){
 function scenery(root,id){root.classList.add('scene','scene-'+id);}
 function stageProgress(session){
   const row=el('p',undefined,'progress');
-  row.append(art('watch'),document.createTextNode('第 '+(session.results.length+1)+'／'+session.queue.length+' 關'));
+  row.append(art('watch'),document.createTextNode(practice?'單關試玩 · Lv. '+practice.level:'第 '+(session.results.length+1)+'／'+session.queue.length+' 關'));
   return row;
 }
 function briefing(){
@@ -118,17 +157,11 @@ function briefing(){
   scenery(root,id);
   root.prepend(stageProgress(session));
   const launch=button('開始這一關',async()=>{
-    enterFullscreen();
     launch.disabled=true;
     launch.textContent='準備道具中';
-    try{
-      await prepareArtwork(id);
-      if(root.isConnected)safe(()=>start(id));
-    }catch{
-      if(root.isConnected)launch.textContent='重新載入道具';
-    }finally{
-      launch.disabled=false;
-    }
+    const ready=await loadStage(id,root);
+    launch.disabled=false;
+    launch.textContent=ready?'開始這一關':'重新載入道具';
   },'primary');
   const motion=button('',()=>safe(()=>{
     commit(next=>next.settings.reduced=!next.settings.reduced);
@@ -143,6 +176,25 @@ function briefing(){
   }
   updateMotion();
   root.append(launch,motion,button('回到大門',home));
+}
+async function loadStage(id,root,prepare){
+  enterFullscreen();
+  try{
+    await prepareArtwork(id);
+    if(!root.isConnected){leaveFullscreen();return false;}
+    prepare?.();
+    start(id);
+    return true;
+  }catch{
+    if(practice&&!game)endPractice();
+    if(root.isConnected){
+      const message=el('p','無法開啟關卡，請再試一次。','status');
+      message.setAttribute('role','alert');
+      root.append(message);
+    }
+    leaveFullscreen();
+    return false;
+  }
 }
 function enterFullscreen(){
   if(document.fullscreenElement||!document.documentElement.requestFullscreen)return;
@@ -186,6 +238,7 @@ function start(id){
   const preparation=el('div',undefined,'preparation');
   preparation.append(el('h2','準備好了嗎？'),el('p',stage.intro),countdown,el('p','倒數結束後開始'));
   const input=id==='shooting'?tiltControls(preparation):null;
+  if(practice)preparation.append(button('立即開始',()=>{if(!run.paused)run.elapsed=0;}));
   body.append(preparation);
   root.append(body);pauseButton.hidden=false;
   const run={record,root,body,elapsed:-preparationMs,previous:null,initial:session.spent,stageSpent:session.stageSpent||0,
@@ -251,11 +304,12 @@ function pause(){
   run.controller?.pause?.();
   const menu=el('div',undefined,'actions');
   menu.append(button('繼續',()=>{if(orientation.matches||document.hidden)return;run.paused=false;run.previous=null;menu.remove();run.body.classList.remove('concealed');run.body.inert=false;run.animations.forEach(animation=>animation.play());},'primary'),
-    button('離開屋子',()=>safe(()=>{
+    button(practice?'離開試玩':'離開屋子',()=>safe(()=>{
       checkpoint(run);
       commit(next=>{next.active.attempts.push({...run.record,status:'中斷'});next.active.pending=null;});
       run.input?.dispose();
-      game=null;home();
+      game=null;
+      if(practice)practiceMenu();else home();
     })),
     button('跳過這關',()=>{if(confirm('跳過後會進到下一關。確定要跳過嗎？'))settle('skip');}));
   run.root.append(menu);
@@ -286,7 +340,7 @@ function settle(reason){
       const profile=profiles[0]??null;
       const state=current.ruleVersion===record.parameters.version&&(current.profile??null)===profile
         ?current:{...current,streak:0};
-      const result=reason==='skip'||record.fixed||profiles.length>1
+      const result=practice?{...current,reason:'單關試玩'}:reason==='skip'||record.fixed||profiles.length>1
         ?{...current,reason:reason==='skip'?'跳過':record.fixed?'固定條件':'本關使用多種操作方式'}
         :{...adjust(record.id,state,record.rows,false),ruleVersion:record.parameters.version,profile};
       next.dda[record.id]=result;
@@ -297,12 +351,12 @@ function settle(reason){
     if(data.active.results.length===data.active.queue.length||data.active.spent>=limit)leaveFullscreen();
   }
   if(reason==='finish')root.append(el('p','獨立作答 '+record.rows.filter(row=>row.outcome==='independent').length+' 次'));
-  const control=button('繼續旅程',()=>safe(briefing),'primary');
+  const control=button(practice?'返回試玩選單':'繼續旅程',()=>safe(practice?practiceMenu:briefing),'primary');
   root.append(control);
   function trySave(){
     try{
       persist();
-      control.textContent='繼續旅程';
+      control.textContent=practice?'返回試玩選單':'繼續旅程';
       control.disabled=false;
     }catch{
       control.disabled=true;
@@ -336,6 +390,7 @@ function finishDay(){
 }
 function settings(){
   if(game)return pause();
+  if(practice)endPractice();
   const root=panel('設定');
   if(!data)root.append(el('p','目前無法讀取進度。你可以匯入一份備份。'));
   if(data){
